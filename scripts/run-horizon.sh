@@ -21,10 +21,12 @@ if [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 5242880 ]; then
 fi
 
 log "Running Horizon → $(summary_path)"
+# Must run from inside the checkout: Horizon resolves profiles_dir (and the
+# docs/_posts copy) relative to the working directory, not to --data-dir.
 # COLUMNS keeps rich from truncating file paths in the log to something
 # misleading, which makes failures much harder to diagnose after the fact.
-if COLUMNS=200 uv run --project "$HORIZON_DIR" horizon \
-     --data-dir "$HORIZON_DIR/data" --log-level WARNING >>"$LOG" 2>&1; then
+if (cd "$HORIZON_DIR" && COLUMNS=200 uv run horizon \
+      --data-dir data --log-level WARNING) >>"$LOG" 2>&1; then
   ok "Horizon finished"
 else
   status=$?
