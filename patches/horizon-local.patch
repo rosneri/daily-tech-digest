@@ -1,0 +1,486 @@
+diff --git a/profiles/tech-news/analysis.md b/profiles/tech-news/analysis.md
+index 57ee37a..bdc2bc9 100644
+--- a/profiles/tech-news/analysis.md
++++ b/profiles/tech-news/analysis.md
+@@ -15,3 +15,11 @@ Evaluate the importance of timely technology news for readers interested in soft
+ Consider technical depth, novelty, likely impact, source quality, relevance to software engineering and AI systems, and concrete supporting details. Treat substantive community debate as additional evidence of value, but do not equate popularity with technical importance. Do not reward exaggerated headlines.
+ 
+ Use three to five specific topic tags.
++
++# Reader profile
++
++The reader is a working software engineer whose day-to-day is JavaScript/TypeScript, Node, React and the web platform, Python, and building with AI.
++
++Apply the rubric above as written, then use relevance to this reader to settle borderline calls. Items that change how they write, ship, or operate software — language, runtime, framework and tooling releases; security advisories in widely used packages; developer-facing AI; architecture, testing and platform-engineering practice; notable open-source projects — sit at the upper end of the band the rubric assigns them.
++
++Consumer hardware launches, space, biotech, transport, funding rounds, and business or policy coverage sit at the lower end of their band unless they carry a concrete consequence for people who build software. This adjusts placement within a band; it is not a separate penalty, and genuinely major news in these areas still scores on its own merits.
+diff --git a/src/ai/analyzer.py b/src/ai/analyzer.py
+index 5f74a2f..d09887d 100644
+--- a/src/ai/analyzer.py
++++ b/src/ai/analyzer.py
+@@ -58,6 +58,7 @@ class ContentAnalyzer:
+         throttle_sec = self._get_throttle_sec()
+         concurrency = self._get_concurrency()
+         semaphore = asyncio.Semaphore(concurrency)
++        self.failure_count = 0
+ 
+         async def _process(item: ContentItem, index: int, progress_task) -> ContentItem:
+             async with semaphore:
+@@ -65,6 +66,7 @@ class ContentAnalyzer:
+                     await self._analyze_item(item)
+                 except Exception as e:
+                     logger.error("Error analyzing item %s: %s", item.id, e)
++                    self.failure_count += 1
+                     if item.processing:
+                         item.processing.analysis = ContentAnalysis(
+                             score=None,
+diff --git a/src/ai/client.py b/src/ai/client.py
+index 8e65558..e06029d 100644
+--- a/src/ai/client.py
++++ b/src/ai/client.py
+@@ -1,11 +1,13 @@
+ """AI client abstraction supporting multiple providers."""
+ 
++import asyncio
+ import os
+ import re
++import shutil
++import subprocess
+ from abc import ABC, abstractmethod
+ from typing import Any, Dict, List, Optional
+ from openai import AsyncAzureOpenAI, AsyncOpenAI
+-from anthropic import AsyncAnthropic
+ from google import genai
+ from google.genai import types
+ 
+@@ -115,27 +117,74 @@ class AIClient(ABC):
+ 
+ 
+ class AnthropicClient(AIClient):
+-    """Client for Anthropic-compatible models."""
++    """Client that calls Claude via the ``claude`` CLI (Claude Code).
+ 
+-    def __init__(self, config: AIConfig):
+-        """Initialize Anthropic client.
+-
+-        Args:
+-            config: AI configuration
+-        """
+-        self.config = config
++    Instead of using the Anthropic Python SDK directly, this shells out to
++    ``claude -p "<prompt>"`` so that no separate API key is required –
++    authentication is handled by the locally-installed CLI.
++    """
+ 
+-        api_key = _resolve_api_key(config)
++    _claude_path: Optional[str] = None
++
++    # Common locations for the claude binary.  launchd uses a minimal PATH
++    # (typically just /usr/bin:/bin) so ``shutil.which`` alone will miss
++    # binaries installed in /usr/local/bin, Homebrew, or npm-global paths.
++    _CANDIDATE_PATHS = [
++        "/usr/local/bin/claude",
++        os.path.expanduser("~/.claude/local/claude"),
++        os.path.expanduser("~/.npm/bin/claude"),
++        "/opt/homebrew/bin/claude",
++    ]
++
++    # Extra directories injected into PATH for the subprocess so the CLI
++    # (and any tools it invokes) can find typical system utilities.
++    _EXTRA_PATH_DIRS = [
++        "/usr/local/bin",
++        "/opt/homebrew/bin",
++        os.path.expanduser("~/.claude/local"),
++        os.path.expanduser("~/.npm/bin"),
++    ]
+ 
+-        kwargs = {"api_key": api_key}
+-        if config.base_url:
+-            kwargs["base_url"] = config.base_url
++    @classmethod
++    def _resolve_claude_path(cls) -> str:
++        """Find the claude binary, checking well-known locations first."""
++        # 1. Check well-known absolute paths.
++        for candidate in cls._CANDIDATE_PATHS:
++            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
++                logger.info("Found claude CLI at %s", candidate)
++                return candidate
++        # 2. Fall back to shutil.which (works when PATH is correct).
++        found = shutil.which("claude")
++        if found:
++            logger.info("Found claude CLI via PATH at %s", found)
++            return found
++        # 3. Give up but return bare name so the error surfaces at exec time.
++        logger.warning(
++            "claude CLI not found in well-known locations or PATH – "
++            "AnthropicClient will fail at runtime."
++        )
++        return "claude"
+ 
+-        self.client = AsyncAnthropic(**kwargs)
++    def __init__(self, config: AIConfig):
++        self.config = config
+         self.model = config.model
+         self.temperature = config.temperature
+         self.max_tokens = config.max_tokens
+ 
++        # Resolve the CLI path once (class-level cache).
++        if AnthropicClient._claude_path is None:
++            AnthropicClient._claude_path = self._resolve_claude_path()
++
++    def _subprocess_env(self) -> Dict[str, str]:
++        """Build an environment dict with an augmented PATH."""
++        env = os.environ.copy()
++        path_parts = env.get("PATH", "/usr/bin:/bin").split(os.pathsep)
++        for d in self._EXTRA_PATH_DIRS:
++            if d not in path_parts:
++                path_parts.insert(0, d)
++        env["PATH"] = os.pathsep.join(path_parts)
++        return env
++
+     async def complete(
+         self,
+         system: str,
+@@ -143,35 +192,66 @@ class AnthropicClient(AIClient):
+         temperature: Optional[float] = None,
+         max_tokens: Optional[int] = None,
+     ) -> str:
+-        """Generate completion using Claude.
+-
+-        Args:
+-            system: System prompt
+-            user: User prompt
+-            temperature: Sampling temperature
+-            max_tokens: Maximum tokens to generate
++        """Generate a completion by invoking the ``claude`` CLI.
+ 
+-        Returns:
+-            str: Generated text
++        The system and user prompts are combined into a single prompt string
++        passed via ``claude -p``.
+         """
+-        temperature = self.temperature if temperature is None else temperature
+-        max_tokens = self.max_tokens if max_tokens is None else max_tokens
++        # Build the combined prompt for the CLI.
++        prompt = f"<system>\n{system}\n</system>\n\n{user}"
+ 
+-        message = await self.client.messages.create(
+-            model=self.model,
+-            max_tokens=max_tokens,
+-            temperature=temperature,
+-            system=system,
+-            messages=[{"role": "user", "content": user}]
+-        )
+-        usage = getattr(message, "usage", None)
+-        if usage is not None:
+-            record_usage(
+-                self.config.provider.value,
+-                input_tokens=getattr(usage, "input_tokens", 0),
+-                output_tokens=getattr(usage, "output_tokens", 0),
++        cmd = [
++            AnthropicClient._claude_path or "claude",
++            "-p",
++            prompt,
++        ]
++        if self.model:
++            cmd.extend(["--model", self.model])
++
++        env = self._subprocess_env()
++        logger.debug("Running claude CLI: %s", " ".join(cmd[:3]) + " ...")
++
++        loop = asyncio.get_running_loop()
++        try:
++            result = await loop.run_in_executor(
++                None,
++                lambda: subprocess.run(
++                    cmd,
++                    capture_output=True,
++                    text=True,
++                    timeout=120,
++                    env=env,
++                    # The CLI waits 3s for stdin it will never get, on every
++                    # call. Closing it removes that stall (and the risk of the
++                    # subprocess blocking on an inherited tty under launchd).
++                    stdin=subprocess.DEVNULL,
++                ),
++            )
++        except FileNotFoundError:
++            raise RuntimeError(
++                f"claude CLI not found at '{AnthropicClient._claude_path}'. "
++                "Install Claude Code or ensure 'claude' is on your PATH."
++            )
++
++        if result.returncode != 0:
++            # The CLI reports most failures (usage limits, auth, overload) on
++            # stdout, not stderr, so include both or the log line is blank.
++            detail = (result.stderr.strip() or result.stdout.strip()
++                      or "no output on stderr or stdout")
++            logger.error(
++                "claude CLI failed (exit %d): %s",
++                result.returncode,
++                detail[:500],
+             )
+-        return message.content[0].text
++            raise RuntimeError(
++                f"claude CLI exited with code {result.returncode}: {detail}"
++            )
++
++        output = result.stdout.strip()
++        if not output:
++            raise ValueError("Empty response from claude CLI")
++
++        return output
+ 
+ 
+ class OpenAIClient(AIClient):
+@@ -541,11 +621,11 @@ def _uses_anthropic_compatible_api(config: AIConfig) -> bool:
+ 
+ def _create_single_client(config: AIConfig) -> AIClient:
+     """Create a single AI client instance."""
+-    if (
+-        config.provider == AIProvider.ANTHROPIC
+-        or _uses_anthropic_compatible_api(config)
+-    ):
++    if config.provider == AIProvider.ANTHROPIC:
+         return AnthropicClient(config)
++    elif _uses_anthropic_compatible_api(config):
++        # MiniMax Anthropic-compatible endpoint – route through OpenAI client
++        return OpenAIClient(config)
+     elif config.provider == AIProvider.AZURE:
+         return AzureOpenAIClient(config)
+     elif config.provider == AIProvider.GEMINI:
+diff --git a/src/models.py b/src/models.py
+index e99f0c5..7ce6103 100644
+--- a/src/models.py
++++ b/src/models.py
+@@ -216,13 +216,21 @@ class AIConfig(BaseModel):
+ class GitHubSourceConfig(BaseModel):
+     """GitHub source configuration."""
+ 
+-    type: str  # "user_events", "repo_releases", etc.
++    type: str  # "user_events", "repo_releases", "search_repos"
+     username: Optional[str] = None
+     owner: Optional[str] = None
+     repo: Optional[str] = None
+     enabled: bool = True
+     category: Optional[str] = None
+     profile: ProfileRoute = None
++    # --- "search_repos" only ---------------------------------------------
++    # Repos created in the last `created_within_days` are ranked by stars;
++    # this is the closest public-API equivalent of the GitHub Trending page.
++    query: Optional[str] = None
++    language: Optional[str] = None
++    min_stars: int = 50
++    created_within_days: int = 14
++    max_items: int = 10
+ 
+ 
+ class HackerNewsConfig(BaseModel):
+diff --git a/src/orchestrator.py b/src/orchestrator.py
+index b299b6d..03b8722 100644
+--- a/src/orchestrator.py
++++ b/src/orchestrator.py
+@@ -34,6 +34,26 @@ from .ai.tokens import get_usage_snapshot
+ from .processing import ProfileRegistry
+ 
+ 
++# Default headers for outbound HTTP requests.  Several publishers (e.g.
++# Mozilla Hacks) reject the bare `python-httpx` user agent with a 403, so we
++# present a normal browser UA when fetching feeds.
++# Abort the run when at least this share of items fail AI analysis, rather
++# than emitting an empty digest that reads as "nothing important happened".
++ANALYSIS_FAILURE_ABORT_RATIO = 0.5
++
++DEFAULT_HTTP_HEADERS = {
++    "User-Agent": (
++        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
++        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
++    ),
++    "Accept": (
++        "application/rss+xml, application/atom+xml, application/xml;q=0.9, "
++        "text/xml;q=0.9, text/html;q=0.8, */*;q=0.7"
++    ),
++    "Accept-Language": "en-US,en;q=0.9",
++}
++
++
+ _TRACKING_QUERY_PARAMETERS = {
+     "_ga",
+     "dclid",
+@@ -420,7 +440,9 @@ class HorizonOrchestrator:
+             List[ContentItem]: All fetched items
+         """
+         self.last_fetch_report = None
+-        async with httpx.AsyncClient(timeout=30.0) as client:
++        async with httpx.AsyncClient(
++            timeout=30.0, headers=DEFAULT_HTTP_HEADERS, follow_redirects=True
++        ) as client:
+             tasks = []
+ 
+             # GitHub sources
+@@ -977,7 +999,9 @@ class HorizonOrchestrator:
+             f"{len(twitter_items)} Twitter items..."
+         )
+ 
+-        async with httpx.AsyncClient(timeout=30.0) as client:
++        async with httpx.AsyncClient(
++            timeout=30.0, headers=DEFAULT_HTTP_HEADERS, follow_redirects=True
++        ) as client:
+             if tw_cfg.mode == "playwright":
+                 self.console.print(
+                     "   [yellow]Reply expansion not yet supported in Playwright mode.[/yellow]"
+@@ -1058,7 +1082,28 @@ class HorizonOrchestrator:
+         ai_client = create_ai_client(self.config.ai)
+         analyzer = ContentAnalyzer(ai_client, self.profiles, console=self.console)
+ 
+-        return await analyzer.analyze_batch(items)
++        analyzed = await analyzer.analyze_batch(items)
++
++        # An unscored item can never clear the threshold, so if the AI backend
++        # is broadly failing (usage limit, auth, overload) the run still
++        # "succeeds" and writes a summary reading "none met the importance
++        # threshold" -- indistinguishable from a genuinely quiet news day, and
++        # downstream consumers silently fall back.  Refuse to ship that.
++        failures = getattr(analyzer, "failure_count", 0)
++        if items and failures >= max(1, len(items)) * ANALYSIS_FAILURE_ABORT_RATIO:
++            raise RuntimeError(
++                f"AI analysis failed for {failures}/{len(items)} items "
++                f"({failures / len(items):.0%}). Refusing to emit a digest that "
++                "would look like a quiet news day. Check the 'claude CLI failed' "
++                "lines above -- usually a usage limit or an expired login."
++            )
++        if failures:
++            self.console.print(
++                f"[yellow]{self.icons['warning']} AI analysis failed for "
++                f"{failures}/{len(items)} items; they cannot be scored.[/yellow]\n"
++            )
++
++        return analyzed
+ 
+     async def _generate_summary(
+         self,
+diff --git a/src/scrapers/github.py b/src/scrapers/github.py
+index a2c9387..d29123e 100644
+--- a/src/scrapers/github.py
++++ b/src/scrapers/github.py
+@@ -2,7 +2,7 @@
+ 
+ import logging
+ import os
+-from datetime import datetime
++from datetime import datetime, timedelta, timezone
+ from typing import List, Optional
+ import httpx
+ 
+@@ -62,6 +62,9 @@ class GitHubScraper(BaseScraper):
+             elif source.type == "repo_releases" and source.owner and source.repo:
+                 release_items = await self._fetch_repo_releases(source, since)
+                 items.extend(release_items)
++            elif source.type == "search_repos":
++                trending_items = await self._fetch_search_repos(source, since)
++                items.extend(trending_items)
+ 
+         return items
+ 
+@@ -222,3 +225,101 @@ class GitHubScraper(BaseScraper):
+             logger.warning("Error fetching releases for %s/%s: %s", owner, repo, e)
+ 
+         return items
++
++    async def _fetch_search_repos(
++        self,
++        source: GitHubSourceConfig,
++        since: datetime,
++    ) -> List[ContentItem]:
++        """Fetch trending repositories via the GitHub search API.
++
++        GitHub has no public "trending" endpoint, so we approximate it the way
++        most trending trackers do: recently-created repos ranked by stars.
++        Unlike the OSS Insight trends API this returns projects people have
++        actually heard of, which is what the open-source digest section needs.
++
++        Note: results are *not* filtered by ``since``.  A repo that crossed the
++        star threshold today may have been created a week ago, and dropping it
++        would leave the section permanently empty.  Cross-run repetition is
++        handled downstream by topic dedup.
++        """
++        qualifiers = [f"stars:>={source.min_stars}"]
++        cutoff = datetime.now(timezone.utc) - timedelta(days=source.created_within_days)
++        qualifiers.append(f"created:>={cutoff.strftime('%Y-%m-%d')}")
++        if source.language:
++            qualifiers.append(f"language:{source.language}")
++        query = " ".join([source.query] if source.query else []) + " " + " ".join(qualifiers)
++
++        params = {
++            "q": query.strip(),
++            "sort": "stars",
++            "order": "desc",
++            "per_page": min(source.max_items, 100),
++        }
++        items: List[ContentItem] = []
++
++        try:
++            response = await self.client.get(
++                f"{self.base_url}/search/repositories",
++                params=params,
++                headers=self._get_headers(),
++                follow_redirects=True,
++            )
++            response.raise_for_status()
++            repos = response.json().get("items", [])
++        except httpx.HTTPError as e:
++            logger.warning("Error searching repos (%s): %s", query.strip(), e)
++            return items
++        except (ValueError, KeyError) as e:
++            logger.warning("Malformed repo search response for %s: %s", query.strip(), e)
++            return items
++
++        for repo in repos[: source.max_items]:
++            full_name = repo.get("full_name")
++            if not full_name:
++                continue
++
++            stars = repo.get("stargazers_count", 0)
++            description = (repo.get("description") or "").strip()
++            language = repo.get("primary_language") or repo.get("language") or "unknown"
++            topics = repo.get("topics") or []
++
++            content_lines = [
++                f"Trending GitHub repository: {full_name}",
++                f"Stars: {stars}",
++                f"Language: {language}",
++                f"Created: {repo.get('created_at', 'unknown')}",
++            ]
++            if topics:
++                content_lines.append(f"Topics: {', '.join(topics)}")
++            if description:
++                content_lines.extend(["", description])
++
++            try:
++                published_at = datetime.fromisoformat(
++                    repo["created_at"].replace("Z", "+00:00")
++                )
++            except (KeyError, ValueError):
++                published_at = datetime.now(timezone.utc)
++
++            items.append(
++                ContentItem(
++                    id=self._generate_id("github", "trending", str(repo.get("id", full_name))),
++                    source_type=SourceType.GITHUB,
++                    title=f"{full_name} — {description[:120]}" if description else full_name,
++                    url=repo.get("html_url", f"https://github.com/{full_name}"),
++                    content="\n".join(content_lines),
++                    author=(repo.get("owner") or {}).get("login", "unknown"),
++                    published_at=published_at,
++                    profile=source.profile,
++                    metadata={
++                        "repo": full_name,
++                        "stars": stars,
++                        "language": language,
++                        "topics": topics,
++                        "category": source.category,
++                    },
++                )
++            )
++
++        return items

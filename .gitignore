@@ -1,0 +1,29 @@
+# Local configuration — contains your Slack channel ID and paths.
+config.env
+
+# Secrets. Never commit.
+.env
+*.env
+!config.env.example
+!.env.example
+
+# Runtime state (lives under DIGEST_HOME, but guard against a co-located install)
+horizon/
+digests/
+podcasts/
+*.log
+favorites.json
+
+# Generated audio and transcripts
+*.mp3
+*.wav
+transcripts/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.podcast-venv/
+
+# macOS
+.DS_Store

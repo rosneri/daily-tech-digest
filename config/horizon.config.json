@@ -1,0 +1,761 @@
+{
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "api_key_env": "ANTHROPIC_API_KEY",
+    "temperature": 0.3,
+    "max_tokens": 4096,
+    "throttle_sec": 0,
+    "analysis_concurrency": 4,
+    "enrichment_concurrency": 2
+  },
+  "processing": {
+    "profiles_dir": "profiles",
+    "default_profile": "tech-news",
+    "profile_settings": {
+      "tech-news": {
+        "threshold": 5.5,
+        "topic_dedup": true
+      }
+    }
+  },
+  "display": {
+    "icon_style": "emoji"
+  },
+  "sources": {
+    "hackernews": {
+      "enabled": true,
+      "fetch_top_stories": 60,
+      "min_score": 40,
+      "category": "tech",
+      "profile": "tech-news"
+    },
+    "reddit": {
+      "enabled": true,
+      "fetch_comments": 5,
+      "subreddits": [
+        {
+          "subreddit": "programming",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 20,
+          "min_score": 50,
+          "category": "dev",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "javascript",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 15,
+          "min_score": 30,
+          "category": "js-ts",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "typescript",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 15,
+          "min_score": 20,
+          "category": "js-ts",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "webdev",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 15,
+          "min_score": 30,
+          "category": "webdev",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "node",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 10,
+          "min_score": 20,
+          "category": "js-ts",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "MachineLearning",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 15,
+          "min_score": 50,
+          "category": "ai-ml",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "netsec",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 10,
+          "min_score": 30,
+          "category": "security",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "Python",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 15,
+          "min_score": 40,
+          "category": "python",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "django",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 10,
+          "min_score": 20,
+          "category": "python",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "FastAPI",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 10,
+          "min_score": 15,
+          "category": "python",
+          "profile": "tech-news"
+        },
+        {
+          "subreddit": "ExperiencedDevs",
+          "enabled": true,
+          "sort": "hot",
+          "time_filter": "day",
+          "fetch_limit": 15,
+          "min_score": 40,
+          "category": "sw-eng",
+          "profile": "tech-news"
+        }
+      ],
+      "users": []
+    },
+    "rss": [
+      {
+        "name": "The Verge - Tech",
+        "url": "https://www.theverge.com/rss/tech/index.xml",
+        "enabled": true,
+        "category": "tech",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Ars Technica",
+        "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+        "enabled": true,
+        "category": "tech",
+        "profile": "tech-news"
+      },
+      {
+        "name": "TechCrunch",
+        "url": "https://techcrunch.com/feed/",
+        "enabled": true,
+        "category": "tech",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Simon Willison",
+        "url": "https://simonwillison.net/atom/everything/",
+        "enabled": true,
+        "category": "ai-tools",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Hacker News RSS (best)",
+        "url": "https://hnrss.org/best?count=20",
+        "enabled": true,
+        "category": "tech",
+        "profile": "tech-news"
+      },
+      {
+        "name": "JavaScript Weekly",
+        "url": "https://cprss.s3.amazonaws.com/javascriptweekly.com.xml",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Node Weekly",
+        "url": "https://cprss.s3.amazonaws.com/nodeweekly.com.xml",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "CSS Tricks",
+        "url": "https://css-tricks.com/feed/",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "web.dev Blog",
+        "url": "https://web.dev/feed.xml",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Latent Space",
+        "url": "https://www.latent.space/feed",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news"
+      },
+      {
+        "name": "OpenAI Blog",
+        "url": "https://openai.com/blog/rss.xml",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news"
+      },
+      {
+        "name": "GitHub Blog - Engineering",
+        "url": "https://github.blog/engineering.atom",
+        "enabled": true,
+        "category": "dev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Cloudflare Blog",
+        "url": "https://blog.cloudflare.com/rss",
+        "enabled": true,
+        "category": "infra",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Vercel Blog",
+        "url": "https://vercel.com/atom",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Deno Blog",
+        "url": "https://deno.com/feed",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Mozilla Hacks",
+        "url": "https://hacks.mozilla.org/feed/",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Krebs on Security",
+        "url": "https://krebsonsecurity.com/feed/",
+        "enabled": true,
+        "category": "security",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Node.js Blog",
+        "url": "https://nodejs.org/en/feed/blog.xml",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "React Blog",
+        "url": "https://react.dev/rss.xml",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "V8 Blog",
+        "url": "https://v8.dev/blog.atom",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Bun Blog",
+        "url": "https://bun.sh/rss.xml",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Svelte Blog",
+        "url": "https://svelte.dev/blog/rss.xml",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Vue Blog",
+        "url": "https://blog.vuejs.org/feed.rss",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Dan Abramov (overreacted)",
+        "url": "https://overreacted.io/rss.xml",
+        "enabled": true,
+        "category": "dev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Anthony Fu Blog",
+        "url": "https://antfu.me/feed.xml",
+        "enabled": true,
+        "category": "dev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Hugging Face Blog",
+        "url": "https://huggingface.co/blog/feed.xml",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Google AI Blog",
+        "url": "https://blog.google/technology/ai/rss/",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Google DeepMind Blog",
+        "url": "https://deepmind.google/blog/rss.xml",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Engineering at Meta",
+        "url": "https://engineering.fb.com/feed/",
+        "enabled": true,
+        "category": "ai-ml",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Netflix Tech Blog",
+        "url": "https://netflixtechblog.com/feed",
+        "enabled": true,
+        "category": "dev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Spotify Engineering",
+        "url": "https://engineering.atspotify.com/feed",
+        "enabled": true,
+        "category": "dev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "InfoQ",
+        "url": "https://feed.infoq.com/",
+        "enabled": true,
+        "category": "dev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Smashing Magazine",
+        "url": "https://www.smashingmagazine.com/feed/",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "name": "TC39 (ECMAScript proposals)",
+        "url": "https://github.com/tc39/proposals/commits/main.atom",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Python Insider",
+        "url": "https://blog.python.org/feeds/posts/default?alt=rss",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Real Python",
+        "url": "https://realpython.com/atom.xml",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Django Blog",
+        "url": "https://www.djangoproject.com/rss/weblog/",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "name": "PyCoders Weekly",
+        "url": "https://pycoders.com/feed",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Astral (uv, ruff)",
+        "url": "https://astral.sh/blog/rss.xml",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Pydantic Blog",
+        "url": "https://blog.pydantic.dev/feed",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Martin Fowler",
+        "url": "https://martinfowler.com/feed.atom",
+        "enabled": true,
+        "category": "sw-eng",
+        "profile": "tech-news"
+      },
+      {
+        "name": "The Pragmatic Engineer",
+        "url": "https://newsletter.pragmaticengineer.com/feed",
+        "enabled": true,
+        "category": "sw-eng",
+        "profile": "tech-news"
+      },
+      {
+        "name": "LeadDev",
+        "url": "https://leaddev.com/feed",
+        "enabled": true,
+        "category": "sw-eng",
+        "profile": "tech-news"
+      },
+      {
+        "name": "Increment (Stripe)",
+        "url": "https://increment.com/feed.xml",
+        "enabled": true,
+        "category": "sw-eng",
+        "profile": "tech-news"
+      },
+      {
+        "name": "testing.googleblog",
+        "url": "https://testing.googleblog.com/feeds/posts/default?alt=rss",
+        "enabled": true,
+        "category": "sw-eng",
+        "profile": "tech-news"
+      },
+      {
+        "name": "NVIDIA Blog",
+        "url": "https://blogs.nvidia.com/feed/",
+        "category": "ai-ml",
+        "profile": "tech-news",
+        "enabled": true
+      },
+      {
+        "name": "Shopify Engineering",
+        "url": "https://shopify.engineering/blog.atom",
+        "category": "dev",
+        "profile": "tech-news",
+        "enabled": true
+      },
+      {
+        "name": "Josh Comeau",
+        "url": "https://www.joshwcomeau.com/rss.xml",
+        "category": "webdev",
+        "profile": "tech-news",
+        "enabled": true
+      },
+      {
+        "name": "Kent C. Dodds",
+        "url": "https://kentcdodds.com/blog/rss.xml",
+        "category": "js-ts",
+        "profile": "tech-news",
+        "enabled": true
+      },
+      {
+        "name": "DEV.to",
+        "url": "https://dev.to/feed",
+        "category": "dev",
+        "profile": "tech-news",
+        "enabled": true
+      },
+      {
+        "name": "Hacker News RSS (front page)",
+        "url": "https://hnrss.org/frontpage?count=30",
+        "category": "tech",
+        "profile": "tech-news",
+        "enabled": true
+      }
+    ],
+    "github": [
+      {
+        "type": "repo_releases",
+        "owner": "nodejs",
+        "repo": "node",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "denoland",
+        "repo": "deno",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "oven-sh",
+        "repo": "bun",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "vitejs",
+        "repo": "vite",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "microsoft",
+        "repo": "TypeScript",
+        "enabled": true,
+        "category": "js-ts",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "vercel",
+        "repo": "next.js",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "sveltejs",
+        "repo": "svelte",
+        "enabled": true,
+        "category": "webdev",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "python",
+        "repo": "cpython",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "astral-sh",
+        "repo": "uv",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "astral-sh",
+        "repo": "ruff",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "pydantic",
+        "repo": "pydantic",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "fastapi",
+        "repo": "fastapi",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "pallets",
+        "repo": "flask",
+        "enabled": true,
+        "category": "python",
+        "profile": "tech-news"
+      },
+      {
+        "type": "search_repos",
+        "query": "",
+        "min_stars": 300,
+        "created_within_days": 30,
+        "max_items": 6,
+        "enabled": true,
+        "category": "oss-trending",
+        "profile": "tech-news"
+      },
+      {
+        "type": "search_repos",
+        "query": "",
+        "language": "TypeScript",
+        "min_stars": 120,
+        "created_within_days": 30,
+        "max_items": 4,
+        "enabled": true,
+        "category": "oss-trending",
+        "profile": "tech-news"
+      },
+      {
+        "type": "search_repos",
+        "query": "",
+        "language": "Python",
+        "min_stars": 120,
+        "created_within_days": 30,
+        "max_items": 4,
+        "enabled": true,
+        "category": "oss-trending",
+        "profile": "tech-news"
+      }
+    ],
+    "ossinsight": {
+      "enabled": false,
+      "period": "past_week",
+      "languages": [
+        "All",
+        "TypeScript",
+        "JavaScript",
+        "Python",
+        "Rust"
+      ],
+      "keywords": [],
+      "min_stars": 10,
+      "max_items": 15,
+      "category": "oss-trending",
+      "profile": "tech-news"
+    }
+  },
+  "collection": {
+    "time_window_hours": 24
+  },
+  "digest": {
+    "max_items": 45,
+    "profile_order": [
+      "tech-news"
+    ],
+    "category_groups": {
+      "js-ts": {
+        "name": "JavaScript / TypeScript",
+        "limit": 10,
+        "categories": [
+          "js-ts"
+        ]
+      },
+      "ai-ml": {
+        "name": "AI / Machine Learning",
+        "limit": 10,
+        "categories": [
+          "ai-ml",
+          "ai-tools"
+        ]
+      },
+      "webdev": {
+        "name": "Web Development",
+        "limit": 6,
+        "categories": [
+          "webdev"
+        ]
+      },
+      "infra": {
+        "name": "Infrastructure & Security",
+        "limit": 5,
+        "categories": [
+          "infra",
+          "security"
+        ]
+      },
+      "python": {
+        "name": "Python Ecosystem",
+        "limit": 6,
+        "categories": [
+          "python"
+        ]
+      },
+      "sw-eng": {
+        "name": "Software Engineering",
+        "limit": 8,
+        "categories": [
+          "sw-eng",
+          "dev"
+        ]
+      },
+      "oss": {
+        "name": "Open Source Trending",
+        "limit": 5,
+        "categories": [
+          "oss-trending"
+        ]
+      },
+      "tech": {
+        "name": "Technology News",
+        "limit": 25,
+        "categories": [
+          "tech"
+        ]
+      }
+    },
+    "default_group": "other",
+    "default_group_limit": 8
+  },
+  "email": {
+    "enabled": false,
+    "smtp_server": "smtp.example.com",
+    "smtp_port": 465,
+    "imap_enabled": false,
+    "imap_server": "imap.example.com",
+    "imap_port": 993,
+    "email_address": "noreply@example.com",
+    "password_env": "EMAIL_PASSWORD",
+    "sender_name": "Horizon Daily",
+    "subscribe_keyword": "SUBSCRIBE",
+    "unsubscribe_keyword": "UNSUBSCRIBE"
+  },
+  "webhook": {
+    "enabled": false,
+    "url_env": "HORIZON_WEBHOOK_URL",
+    "delivery": "summary",
+    "overview_position": "first",
+    "platform": "generic",
+    "layout": "markdown",
+    "fallback_layout": "markdown",
+    "languages": null,
+    "request_body": {},
+    "headers": ""
+  }
+}

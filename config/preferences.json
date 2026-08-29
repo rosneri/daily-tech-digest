@@ -1,0 +1,273 @@
+{
+  "wantMore": [
+    "programming",
+    "engineering",
+    "ai",
+    "dev-tools",
+    "software-engineering",
+    "refactoring",
+    "code-review",
+    "dx",
+    "browser",
+    "privacy",
+    "javascript",
+    "typescript",
+    "nodejs",
+    "web-development"
+  ],
+  "wantLess": [],
+  "feeds": [
+    {
+      "name": "Node.js Blog",
+      "url": "https://nodejs.org/en/feed/blog.xml"
+    },
+    {
+      "name": "React Blog",
+      "url": "https://react.dev/rss.xml"
+    },
+    {
+      "name": "Hacker News (Top)",
+      "url": "https://hnrss.org/frontpage"
+    },
+    {
+      "name": "The Verge - Tech",
+      "url": "https://www.theverge.com/rss/index.xml"
+    },
+    {
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/"
+    },
+    {
+      "name": "CSS-Tricks",
+      "url": "https://css-tricks.com/feed/"
+    },
+    {
+      "name": "Smashing Magazine",
+      "url": "https://www.smashingmagazine.com/feed/"
+    },
+    {
+      "name": "DEV.to",
+      "url": "https://dev.to/feed"
+    },
+    {
+      "name": "InfoQ",
+      "url": "https://feed.infoq.com/"
+    },
+    {
+      "name": "JavaScript Weekly",
+      "url": "https://javascriptweekly.com/rss/"
+    },
+    {
+      "name": "Node Weekly",
+      "url": "https://nodeweekly.com/rss/"
+    },
+    {
+      "name": "TypeScript Weekly",
+      "url": "https://typescript-weekly.com/rss/"
+    },
+    {
+      "name": "Changelog",
+      "url": "https://changelog.com/podcast.xml"
+    },
+    {
+      "name": "2ality (Dr. Axel - JS/TS)",
+      "url": "https://feeds.feedburner.com/2ality"
+    },
+    {
+      "name": "Josh Comeau Blog",
+      "url": "https://www.joshwcomeau.com/rss.xml"
+    },
+    {
+      "name": "Kent C. Dodds Blog",
+      "url": "https://kentcdodds.com/blog/rss.xml"
+    },
+    {
+      "name": "Tania Rascia",
+      "url": "https://www.taniarascia.com/rss.xml"
+    },
+    {
+      "name": "web.dev",
+      "url": "https://web.dev/feed.xml"
+    },
+    {
+      "name": "V8 Blog",
+      "url": "https://v8.dev/blog.atom"
+    },
+    {
+      "name": "Deno Blog",
+      "url": "https://deno.com/feed"
+    },
+    {
+      "name": "Bun Blog",
+      "url": "https://bun.sh/rss.xml"
+    },
+    {
+      "name": "TC39 (ECMAScript proposals)",
+      "url": "https://tc39.es/feed.xml"
+    },
+    {
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index"
+    },
+    {
+      "name": "OpenAI Blog",
+      "url": "https://openai.com/blog/rss.xml"
+    },
+    {
+      "name": "Anthropic News",
+      "url": "https://www.anthropic.com/rss.xml"
+    },
+    {
+      "name": "Google AI Blog",
+      "url": "https://blog.google/technology/ai/rss/"
+    },
+    {
+      "name": "Google DeepMind Blog",
+      "url": "https://deepmind.google/blog/rss.xml"
+    },
+    {
+      "name": "Meta AI Blog",
+      "url": "https://ai.meta.com/blog/rss/"
+    },
+    {
+      "name": "Microsoft AI Blog",
+      "url": "https://blogs.microsoft.com/ai/feed/"
+    },
+    {
+      "name": "NVIDIA Blog",
+      "url": "https://blogs.nvidia.com/feed/"
+    },
+    {
+      "name": "Mistral AI Blog",
+      "url": "https://mistral.ai/feed.xml"
+    },
+    {
+      "name": "Hugging Face Blog",
+      "url": "https://huggingface.co/blog/feed.xml"
+    },
+    {
+      "name": "GitHub Blog",
+      "url": "https://github.blog/feed/"
+    },
+    {
+      "name": "Vercel Blog",
+      "url": "https://vercel.com/atom"
+    },
+    {
+      "name": "Netlify Blog",
+      "url": "https://www.netlify.com/blog/index.xml"
+    },
+    {
+      "name": "Spotify Engineering",
+      "url": "https://engineering.atspotify.com/feed/"
+    },
+    {
+      "name": "Cloudflare Blog",
+      "url": "https://blog.cloudflare.com/rss/"
+    },
+    {
+      "name": "Engineering at Meta",
+      "url": "https://engineering.fb.com/feed/"
+    },
+    {
+      "name": "Netflix Tech Blog",
+      "url": "https://netflixtechblog.com/feed"
+    },
+    {
+      "name": "Shopify Engineering",
+      "url": "https://shopify.engineering/blog.atom"
+    },
+    {
+      "name": "Ryan Dahl (tinyclouds)",
+      "url": "https://tinyclouds.org/feed.xml"
+    },
+    {
+      "name": "Ryan Dahl GitHub",
+      "url": "https://github.com/ry.atom"
+    },
+    {
+      "name": "Evan You (Vue Blog)",
+      "url": "https://vuejs.org/feed.xml"
+    },
+    {
+      "name": "Evan You GitHub",
+      "url": "https://github.com/yyx990803.atom"
+    },
+    {
+      "name": "Svelte Blog (Rich Harris)",
+      "url": "https://svelte.dev/blog/rss.xml"
+    },
+    {
+      "name": "Rich Harris GitHub",
+      "url": "https://github.com/Rich-Harris.atom"
+    },
+    {
+      "name": "Anthony Fu Blog",
+      "url": "https://antfu.me/feed.xml"
+    },
+    {
+      "name": "Anthony Fu GitHub",
+      "url": "https://github.com/antfu.atom"
+    },
+    {
+      "name": "Sindre Sorhus Blog",
+      "url": "https://blog.sindresorhus.com/feed"
+    },
+    {
+      "name": "Sindre Sorhus New Repos",
+      "url": "https://sindresorhus.com/feeds/new-repos.xml"
+    },
+    {
+      "name": "Sindre Sorhus GitHub",
+      "url": "https://github.com/sindresorhus.atom"
+    },
+    {
+      "name": "Matteo Collina (Platformatic)",
+      "url": "https://platformatic.dev/blog/rss.xml"
+    },
+    {
+      "name": "Matteo Collina GitHub",
+      "url": "https://github.com/mcollina.atom"
+    },
+    {
+      "name": "Jarred Sumner GitHub",
+      "url": "https://github.com/Jarred-Sumner.atom"
+    },
+    {
+      "name": "Tanner Linsley GitHub",
+      "url": "https://github.com/tannerlinsley.atom"
+    },
+    {
+      "name": "Dan Abramov (overreacted)",
+      "url": "https://overreacted.io/rss.xml"
+    },
+    {
+      "name": "Dan Abramov GitHub",
+      "url": "https://github.com/gaearon.atom"
+    }
+  ],
+  "focus": [
+    "nodejs",
+    "react",
+    "javascript",
+    "typescript",
+    "ai",
+    "software development",
+    "web",
+    "conferences",
+    "nvidia",
+    "gpu",
+    "v8",
+    "ecmascript",
+    "deno",
+    "bun"
+  ],
+  "rules": [
+    "Always check for major tech conferences happening this week (GTC, GDC, QCon, KubeCon, Google I/O, WWDC, re:Invent, Build, etc.) and include top announcements",
+    "Conference stories get priority placement in the digest",
+    "Ensure a balanced digest: at most 40% of stories should be AI/ML topics. The remaining 60% must cover JavaScript/TypeScript ecosystem, general software engineering, web development, or engineering culture",
+    "Prioritize JS/TS ecosystem news: new releases, proposals, tooling updates, runtime news (Node, Deno, Bun, V8)",
+    "Monitor GitHub activity feeds for influential developers (Ryan Dahl, Evan You, Rich Harris, Anthony Fu, Sindre Sorhus, Matteo Collina, Jarred Sumner, Tanner Linsley, Dan Abramov). If they released a new repo, starred something interesting, or published something notable — include it with a brief note on who they are and why it matters"
+  ],
+  "lastDigestDate": ""
+}
