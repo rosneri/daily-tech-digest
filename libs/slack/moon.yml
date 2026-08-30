@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+layer: 'library'
+language: 'python'
+stack: 'backend'
+project:
+  name: 'slack'
+  description: 'Slack Web API client: post, upload files, read threads and reactions.'
+
+tags:
+  - 'adapter'

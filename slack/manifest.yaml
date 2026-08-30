@@ -1,0 +1,42 @@
+display_information:
+  name: Daily Tech Digest
+  description: Posts the daily tech digest thread and uploads the podcast episode.
+  background_color: "#1f2933"
+  long_description: |
+    Delivers the daily tech digest to Slack as a threaded post: a header
+    message, one message per curated story grouped by category, an
+    influencer-takes section, and the day's auto-generated podcast episode
+    uploaded as an MP3 attachment.
+
+    It also reads back reactions and replies on the previous day's thread, so
+    the digest can learn which stories were worth reading.
+
+features:
+  bot_user:
+    display_name: Digest
+    always_online: true
+
+oauth_config:
+  scopes:
+    bot:
+      # Post the digest header, category headers, story messages and footer.
+      - chat:write
+      # Post into channels the bot has not been invited to (optional).
+      - chat:write.public
+      # Upload the daily podcast MP3 into the digest thread.
+      - files:write
+      # Read back the previous day's thread replies (public channels).
+      - channels:history
+      - channels:read
+      # Same, if the digest channel is (or becomes) private.
+      - groups:history
+      - groups:read
+      # Read emoji reactions, which are the digest's feedback signal.
+      - reactions:read
+      # Distinguish the user's replies from the bot's own in a thread.
+      - users:read
+
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

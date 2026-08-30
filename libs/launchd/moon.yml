@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+layer: 'library'
+language: 'python'
+stack: 'backend'
+project:
+  name: 'launchd'
+  description: 'Build, load and maintain macOS launchd user agents.'
+
+tags:
+  - 'adapter'

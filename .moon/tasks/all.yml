@@ -1,0 +1,30 @@
+$schema: 'https://moonrepo.dev/schemas/tasks.json'
+
+# Inherited by every project. Any task here can be overridden per project.
+fileGroups:
+  sources:
+    - 'src/**/*.py'
+  tests:
+    - 'tests/**/*.py'
+  configs:
+    - 'pyproject.toml'
+
+# Tasks go through `uv run` rather than a bare `python`: uv owns the workspace
+# venv and resolves the interpreter from requires-python, so a task behaves the
+# same whether or not the toolchain has been materialised yet.
+tasks:
+  # No third-party linter in the tree. compileall is the syntax gate; the real
+  # coverage is in the tests, which catch a lib reaching for a sibling it does
+  # not declare as a dependency.
+  check:
+    script: 'uv run --project $workspaceRoot python -m compileall -q src'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    script: 'uv run --project $workspaceRoot pytest -q $projectSource'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    options:
+      runFromWorkspaceRoot: true

@@ -32,7 +32,7 @@ unnecessarily.
 
 **Approach B — if today's summary is missing, run Horizon yourself:**
 ```bash
-export PATH="$HOME/.local/bin:/usr/local/bin:$PATH" && cd {{DIGEST_HOME}}/horizon && uv run horizon --data-dir data --log-level WARNING
+{{REPO_ROOT}}/digest run --no-podcast
 ```
 This takes roughly 12 minutes. If it exits non-zero it has deliberately refused
 to emit a digest because AI analysis was failing — do NOT treat the absence of
@@ -118,7 +118,17 @@ If the RSS feed fetch fails, try a WebSearch fallback: `web_search: "site:youtub
 ### Step 4: Deliver via Slack thread
 The digest is delivered as a Slack thread in #claude-updates (channel ID: {{SLACK_CHANNEL_ID}}).
 
-Use `{{SLACK_MCP_PREFIX}}slack_send_message` for ALL messages.
+Delivery goes through the digest's own **Slack app**, not a Slack MCP server — the app can upload the podcast MP3 as a real attachment, which MCP cannot do. Drive it with the `{{REPO_ROOT}}/digest slack` CLI. Setup and troubleshooting: `{{REPO_ROOT}}/docs/slack-app.md`.
+
+Send every message with:
+```bash
+{{REPO_ROOT}}/digest slack post --text-file - <<'SLACKEOF'
+message text here
+SLACKEOF
+```
+Add `--thread-ts <ts>` for every message after the header. Each call prints one JSON object — read `ts` from it. Always use the `--text-file -` heredoc form rather than `--text "..."`: story text routinely contains backticks, quotes and `$`, and the heredoc keeps the shell from interpreting them.
+
+If the first call fails with `no Slack bot token`, `invalid_auth` or `not_in_channel`, the app is not installed yet. Do NOT fall back to an MCP server. Save the digest JSON (Step 6) and stop, noting that `docs/slack-app.md` needs to be run once.
 
 **Message sequence:**
 
@@ -128,7 +138,7 @@ Use `{{SLACK_MCP_PREFIX}}slack_send_message` for ALL messages.
 [N] stories | [Y] influencer takes | [Z] AI Engineer videos
 _Thread below_ 👇
 ```
-Save the returned message_ts — use it as thread_ts for ALL subsequent messages. Also save it for the digest.json `slack_thread_ts` field.
+The `ts` in the JSON printed by this call is the thread parent. Use it as `--thread-ts` for ALL subsequent messages, and save it for the digest.json `slack_thread_ts` field.
 If there are no AI Engineer videos, omit the video count from the header.
 
 **B. Category sections (all as thread replies using thread_ts from header):**
@@ -210,14 +220,16 @@ If it doesn't exist (first run, missed day), skip this step entirely.
 Extract the `slack_thread_ts` field. If it's missing or null, skip this step.
 
 **B. Check for reactions:**
-Use `{{SLACK_MCP_PREFIX}}slack_get_reactions` with:
-- `channel_id`: `{{SLACK_CHANNEL_ID}}`
-- `message_ts`: the `slack_thread_ts` from yesterday's digest
+Read the whole thread in one call — every reply comes back with its reactions attached:
+```bash
+{{REPO_ROOT}}/digest slack thread --ts "<yesterday's slack_thread_ts>"
+```
+Each message in the output has `ts`, `text`, `is_bot` and a `reactions` array (`name`, `count`, `users`). Reactions on the parent header message are included too.
 
-Also check reactions on each **thread reply** — read the thread first with `{{SLACK_MCP_PREFIX}}slack_read_thread` (channel_id: `{{SLACK_CHANNEL_ID}}`, message_ts: the `slack_thread_ts`), then call `slack_get_reactions` on each reply that is a story message.
+To re-check a single message: `{{REPO_ROOT}}/digest slack reactions --ts "<message ts>"`.
 
 **C. Check for comments:**
-From the thread read above, identify any replies that were posted by the **user** (not by the bot). These are comments on the digest. Match each comment to the story it most likely refers to by position in the thread (a comment typically follows the story message it's about) or by content.
+From the thread read above, identify any replies with `is_bot: false` — those were posted by the user, not by the digest bot. These are comments on the digest. Match each comment to the story it most likely refers to by position in the thread (a comment typically follows the story message it's about) or by content.
 
 **D. Identify liked stories:**
 A story is "liked" if:
@@ -252,9 +264,13 @@ Write the updated favorites.json back to disk.
 ### Step 6: Save the digest
 Create a folder for today's digest: `{{DIGEST_HOME}}/digests/YYYY-MM-DD/`
 
-Copy the Horizon summary markdown into this folder:
+Copy the Horizon summary markdown into this folder with the Write tool (read the
+summary, write it to `{{DIGEST_HOME}}/digests/YYYY-MM-DD/horizon-YYYY-MM-DD-en.md`),
+or with Python if you prefer a one-liner:
 ```bash
-cp {{DIGEST_HOME}}/horizon/data/summaries/horizon-YYYY-MM-DD-en.md {{DIGEST_HOME}}/digests/YYYY-MM-DD/
+python3 -c "import shutil,sys;shutil.copy(sys.argv[1],sys.argv[2])" \
+  {{DIGEST_HOME}}/horizon/data/summaries/horizon-YYYY-MM-DD-en.md \
+  {{DIGEST_HOME}}/digests/YYYY-MM-DD/
 ```
 
 Save the digest JSON to `{{DIGEST_HOME}}/digests/YYYY-MM-DD/digest.json` with structure:
@@ -264,6 +280,12 @@ Save the digest JSON to `{{DIGEST_HOME}}/digests/YYYY-MM-DD/digest.json` with st
   "story_count": N,
   "source": "horizon",
   "slack_thread_ts": "1234567890.123456",
+  "podcast": {
+    "available": true,
+    "path": "podcasts/digest-YYYY-MM-DD.mp3",
+    "size_mb": 2.3,
+    "slack_permalink": "https://…"
+  },
   "categories": { "js_ts": N, "ai_ml": N, "python": N, "sw_eng": N, "web": N, "infra": N, "oss": N },
   "influencer_takes": [
     { "person": "...", "role": "...", "quote": "...", "url": "..." }
@@ -297,28 +319,40 @@ Update `lastDigestDate` in `{{DIGEST_HOME}}/preferences.json` to today's date.
 If podcasts are enabled, turn today's summary into an audio episode:
 
 ```bash
-{{REPO_ROOT}}/scripts/generate-podcast.sh YYYY-MM-DD
+{{REPO_ROOT}}/digest podcast --date YYYY-MM-DD
 ```
 
 This writes `{{DIGEST_HOME}}/podcasts/digest-YYYY-MM-DD.mp3`. It reuses the
 already-authenticated `claude` CLI to write the two-host script and Edge TTS to
 speak it, so it needs no API keys.
 
-When it succeeds, post the episode as a final thread reply:
-
-```
-🎧 *Audio edition* — [duration]
-
-<file path or upload>
+Confirm where it landed and how big it is:
+```bash
+{{REPO_ROOT}}/digest status --date YYYY-MM-DD
 ```
 
-If it fails, log the error and continue. The podcast is a nice-to-have and must
-never block or invalidate the written digest.
+When it succeeds, **upload the MP3 itself** into the thread — do not merely post
+its local path. Slack renders it as an inline audio player:
+
+```bash
+{{REPO_ROOT}}/digest slack upload \
+  --file {{DIGEST_HOME}}/podcasts/digest-YYYY-MM-DD.mp3 \
+  --thread-ts "<header ts>" \
+  --title "Daily Tech Digest — [Month Day, Year]" \
+  --comment "🎧 *Audio edition* — a ~5-8 min briefing of today's top stories."
+```
+
+The call prints `{"ok": true, "file_id": ..., "permalink": ..., "size_mb": ...}`.
+Save `permalink` and `size_mb` for the digest.json `podcast` field, and add
+`| 🎧 Podcast` to the header and footer messages when an episode exists.
+
+If generation or upload fails, log the error and continue. The podcast is a
+nice-to-have and must never block or invalidate the written digest.
 
 ### Error handling
-- If Horizon fails AND WebSearch fallback fails, send a short Slack message to {{SLACK_CHANNEL_ID}}: "⚠️ Digest delayed — unable to source stories. Will retry in next run." and STOP.
+- If Horizon fails AND WebSearch fallback fails, send a short Slack message with `{{REPO_ROOT}}/digest slack post --text "⚠️ Digest delayed — unable to source stories. Will retry in next run."` and STOP.
 - If Slack delivery fails, save the digest to the JSON file anyway so it's not lost.
 - If the digest file already exists for today, this is a re-run. Overwrite the file but note "(re-run)" in the header message.
 - If Step 5 (feedback tracking) fails for any reason, log the error but continue to Step 6. Feedback tracking should never block the digest from being saved.
 - If the AI Engineer RSS feed fails in Step 3b, skip the section silently. It should never block the rest of the digest.
-- If podcast generation (Step 7) fails, log the error and finish normally. The written digest is the deliverable; audio is optional.
+- If podcast generation or upload (Step 7) fails, set `"podcast": {"available": false}` in digest.json, omit `| 🎧 Podcast` from the header and footer, log the error and finish normally. The written digest is the deliverable; audio is optional.

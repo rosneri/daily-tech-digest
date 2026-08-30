@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Daily Tech Digest CLI. See ./digest --help.
+
+A shim, not the implementation: it puts the workspace members on sys.path and
+hands off to digest_cli. That keeps `./digest` working straight from a git
+checkout — and from a launchd job — without `uv sync` having run first. Once the
+workspace is synced, the installed `digest` console script is equivalent.
+"""
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+for project in sorted(ROOT.glob("libs/*/src")) + sorted(ROOT.glob("apps/*/src")):
+    path = str(project)
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from digest_cli.cli import entry
+
+if __name__ == "__main__":
+    entry()

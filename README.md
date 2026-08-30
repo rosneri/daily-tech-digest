@@ -24,11 +24,13 @@ editorial work (categorise, write, deliver). Either can be run on its own.
 
 | | | |
 |---|---|---|
-| macOS | for `launchd` scheduling | the scripts themselves are portable |
-| [`uv`](https://docs.astral.sh/uv/) | Python environments | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| [`proto`](https://moonrepo.dev/proto) | pins every tool version | `curl -fsSL https://moonrepo.dev/install/proto.sh \| bash`, then `proto use` |
+| [`moon`](https://moonrepo.dev/moon) | runs tasks across the workspace | installed by `proto use` |
+| macOS | for `launchd` scheduling | the CLI itself is portable |
+| [`uv`](https://docs.astral.sh/uv/) | the Python workspace, Horizon, podcastfy | installed by `proto use` |
 | Claude Code CLI | LLM calls | authenticates via your existing login — **no API key** |
 | `ffmpeg` | podcast audio only | `brew install ffmpeg` |
-| A Slack MCP server | digest delivery | configured in Claude |
+| A Slack app | digest delivery | created from `slack/manifest.yaml` — [docs/slack-app.md](docs/slack-app.md) |
 
 The default configuration needs **no API keys at all**. Story scoring and podcast
 scripting both go through the logged-in `claude` CLI, and the default TTS engine
@@ -40,40 +42,53 @@ voices or to podcastfy's own LLM.
 ```sh
 git clone <this-repo> daily-tech-digest
 cd daily-tech-digest
-cp config.env.example config.env
+proto use                   # installs python, uv and moon at the pinned versions
+./digest config
 $EDITOR config.env          # set SLACK_CHANNEL_ID
-./install.sh
+./digest install
 ```
 
-`install.sh` is idempotent — re-run it freely. It will:
+`./digest install` is idempotent — re-run it freely. It will:
 
 1. clone [Horizon](https://github.com/Thysrael/Horizon) at a pinned commit and apply `patches/horizon-local.patch`
 2. install Horizon's dependencies and seed `data/config.json`
 3. create an isolated venv for [podcastfy](https://github.com/souzatharsis/podcastfy)
-4. render and load the launchd job
+4. write and load the launchd job
 
-Skip pieces with `./install.sh --no-podcast --no-schedule`.
+Skip pieces with `./digest install --no-podcast --no-schedule`.
 
-Then register the Claude routine (see below) and verify:
+Then set up Slack delivery ([docs/slack-app.md](docs/slack-app.md)), register the
+Claude routine (see below), and verify:
 
 ```sh
-make check      # dependencies, syntax, config
-make status     # what exists for today
+./digest check          # dependencies, syntax, config
+./digest slack check    # token, scopes, channel membership
+./digest status         # what exists for today
+moon check --all        # compile + test every project
 ```
 
 ## Usage
 
 ```sh
-make run-horizon              # fetch + score + summarise (~12 min)
-make summary                  # today's headlines
-make podcast                  # audio episode for today
-make transcript               # script only, no audio
-make podcast DATE=2026-08-28  # any past day with a summary
-make status                   # summary / digest / podcast / schedule
-make logs                     # tail the Horizon log
+./digest run                        # fetch + score + summarise (~12 min)
+./digest summary                    # today's headlines
+./digest podcast                    # audio episode for today
+./digest podcast --transcript-only  # script only, no audio
+./digest podcast --date 2026-08-28  # any past day with a summary
+./digest status                     # summary / digest / podcast / schedule
+./digest logs                       # tail the Horizon log
 ```
 
-`make help` lists everything.
+`./digest --help` lists everything. Every dated command takes `--date YYYY-MM-DD`.
+
+There is no `make` and no shell script: the pipeline is the `digest` CLI over
+the workspace libraries. `moon` runs the checks and tests:
+
+```sh
+moon check --all            # every project
+moon run slack:test         # one project's tests
+moon run digest:check       # one project's syntax gate
+```
 
 ## The Claude routine
 
@@ -81,17 +96,24 @@ The editorial half runs as a scheduled Claude task. Its definition lives in
 `skill/SKILL.md` with placeholders for your paths and channel:
 
 ```sh
-make skill                        # print it with your config filled in
-scripts/render-skill.sh -o /tmp/SKILL.md   # or write to a file
+./digest skill                    # print it with your config filled in
+./digest skill -o /tmp/SKILL.md   # or write it to a file
 ```
+
+Re-render after changing `config.env` — the rendered copy is a build artefact,
+so edit `skill/SKILL.md` rather than the output.
 
 Create a scheduled task in Claude, attach the rendered file, and set it to run
 comfortably after the Horizon job — Horizon takes about 12 minutes, so a 06:45
 job and an 08:00 routine leaves plenty of room.
 
 The routine loads your preferences, reads the morning's summary, maps stories
-into categories, posts the Slack thread, tracks which stories you reacted to
-yesterday, and saves `digest.json`.
+into categories, posts the Slack thread, uploads the podcast MP3 into it, tracks
+which stories you reacted to yesterday, and saves `digest.json`.
+
+It reaches Slack through `./digest slack` rather than an MCP server. That is
+what makes the audio work: MCP can post messages but cannot upload files, so the
+episode could previously only be named, not played.
 
 ## Configuration
 
@@ -130,15 +152,32 @@ Source selection, category limits and scoring live in `config/horizon.config.jso
 ## How the pieces fit
 
 ```
-config.env ──> scripts/lib.sh ──> every script
-                                    │
-   bootstrap-horizon.sh ── clone Horizon @ pin + apply patch + seed config
-   run-horizon.sh ─────── run Horizon, then optionally the podcast
-   generate-podcast.sh ── wrapper: config.env -> generate_podcast.py
-   generate_podcast.py ── parse summary -> write script -> podcastfy TTS
-   install-launchd.sh ─── render launchd/horizon.plist.template, load it
-   render-skill.sh ────── fill placeholders in skill/SKILL.md
+apps/digest ─── the only client. Owns config.env, presentation, orchestration.
+  │
+  ├─ libs/shellenv ── parse shell-style KEY=value files without a shell
+  ├─ libs/slack ───── Slack Web API: post, upload files, read threads/reactions
+  ├─ libs/launchd ─── build, load and retarget macOS launchd agents
+  ├─ libs/horizon ─── clone @ pin + patch + seed; run the daily aggregation
+  └─ libs/podcast ─── build the podcastfy venv; drive the generator; find episodes
 ```
+
+The split is the point: a lib takes explicit arguments and raises its own error
+type, so none of them can reach for `config.env` or decide how something prints.
+That is what makes a second client — a daemon, an MCP server, a different
+scheduler — a new entry in `.moon/workspace.yml` and nothing else.
+
+Every lib is stdlib-only on purpose: the CLI has to run from a bare launchd job
+at 06:45, so `./digest` works straight from a checkout without `uv sync` having
+run. The one exception is `libs/podcast/scripts/generate_podcast.py`, which
+executes inside the podcastfy venv rather than the workspace one — which is
+exactly why it is a subprocess and not an import.
+
+### Workspace
+
+`proto` pins the toolchain in `.prototools`; `moon` maps the projects in
+`.moon/workspace.yml`; `uv` links them as a workspace from the root
+`pyproject.toml`. Tasks run through `uv run`, so they behave the same whether or
+not the toolchain has been materialised.
 
 ### The podcast path
 
@@ -159,7 +198,7 @@ day or `HORIZON_THRESHOLD` is too high. It is *not* a masked AI failure —
 Horizon now aborts non-zero rather than emitting an empty digest when analysis
 is broadly failing, so a summary that says this really did score its inputs.
 
-**`make run-horizon` exits non-zero with "AI analysis failed for N/M items".**
+**`./digest run` exits non-zero with "AI analysis failed for N/M items".**
 Working as intended. Usually a Claude usage limit or an expired login — check
 with `claude -p "hello"`. Any existing summary is left untouched.
 

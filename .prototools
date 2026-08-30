@@ -1,0 +1,11 @@
+# proto owns every tool version this repo needs. `proto use` installs them all.
+#
+# Python is pinned to 3.13 rather than 3.14: podcastfy's dependency tree still
+# fails to build there (python-levenshtein has no 3.14 wheel), and the podcast
+# venv has to stay importable by the same interpreter family.
+python = "3.13.15"
+uv = "0.12.7"
+moon = "2.5.3"
+
+[settings]
+auto-install = true

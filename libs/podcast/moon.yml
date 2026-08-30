@@ -1,0 +1,24 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+layer: 'library'
+language: 'python'
+stack: 'backend'
+project:
+  name: 'podcast'
+  description: 'Adapter for podcastfy: build its venv and generate episodes.'
+
+tags:
+  - 'adapter'
+
+# generate_podcast.py runs under the podcastfy venv, not the workspace one, so
+# it is a script rather than a module — but its behaviour is still tested here.
+fileGroups:
+  sources:
+    - 'src/**/*.py'
+    - 'scripts/**/*.py'
+
+tasks:
+  check:
+    script: 'uv run --project $workspaceRoot python -m compileall -q src scripts'
+    inputs:
+      - '@group(sources)'

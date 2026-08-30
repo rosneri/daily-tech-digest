@@ -7,7 +7,7 @@ the model would otherwise fail the whole run. normalise_transcript() is the
 thing standing between "the model was slightly sloppy" and "no podcast today",
 so it needs to hold up against realistic malformed output.
 
-Run with: make test
+Run with: moon run podcast:test
 """
 
 import importlib.util
@@ -78,9 +78,9 @@ def test_rejects_untagged_output():
             raise AssertionError(f"should have rejected {label}")
 
 
-def test_parse_summary_rejects_empty_digest(tmp: pathlib.Path):
+def test_parse_summary_rejects_empty_digest(tmp_path: pathlib.Path):
     """An empty Horizon summary must not silently yield a zero-story podcast."""
-    p = tmp / "horizon-2026-01-01-en.md"
+    p = tmp_path / "horizon-2026-01-01-en.md"
     p.write_text(
         "# Horizon Daily - 2026-01-01\n\n"
         "> Analyzed 102 items, but none met the importance threshold.\n"
@@ -93,8 +93,8 @@ def test_parse_summary_rejects_empty_digest(tmp: pathlib.Path):
         raise AssertionError("should have rejected an empty summary")
 
 
-def test_parse_summary_extracts_stories(tmp: pathlib.Path):
-    p = tmp / "horizon-2026-01-02-en.md"
+def test_parse_summary_extracts_stories(tmp_path: pathlib.Path):
+    p = tmp_path / "horizon-2026-01-02-en.md"
     p.write_text(
         "# Horizon Daily\n\n"
         '<a id="item-tech-news-1"></a>\n'

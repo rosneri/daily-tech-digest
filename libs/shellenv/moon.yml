@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+layer: 'library'
+language: 'python'
+stack: 'backend'
+project:
+  name: 'shellenv'
+  description: 'Parse shell-style KEY=value files without a shell.'
+
+tags:
+  - 'foundation'

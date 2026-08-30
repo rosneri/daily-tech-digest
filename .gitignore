@@ -24,6 +24,11 @@ __pycache__/
 *.py[cod]
 .venv/
 .podcast-venv/
+.pytest_cache/
+
+# moon caches its task results and toolchain state here.
+.moon/cache/
+.moon/docker/
 
 # macOS
 .DS_Store

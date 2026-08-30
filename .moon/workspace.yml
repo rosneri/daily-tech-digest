@@ -1,0 +1,21 @@
+$schema: 'https://moonrepo.dev/schemas/workspace.json'
+
+# Each library is one bounded context or one adapter. The app is just a client:
+# the rules live in libs/, so a second client — a daemon, an MCP server, a
+# different scheduler — is a new entry here and nothing else.
+projects:
+  shellenv: 'libs/shellenv'
+  slack: 'libs/slack'
+  launchd: 'libs/launchd'
+  horizon: 'libs/horizon'
+  podcast: 'libs/podcast'
+  digest: 'apps/digest'
+
+vcs:
+  client: 'git'
+  defaultBranch: 'main'
+
+pipeline:
+  inheritColorsForPipedTasks: true
+
+telemetry: false

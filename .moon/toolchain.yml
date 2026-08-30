@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/toolchain.json'
+
+# Versions live in .prototools; moon defers to proto so the two never drift.
+python:
+  version: '3.13.15'
+  packageManager: 'uv'
+  uv:
+    version: '0.12.7'
+  # One venv at the workspace root. The libs are stdlib-only, so this exists to
+  # link the workspace members together, not to install a dependency tree.
+  rootVenvOnly: true

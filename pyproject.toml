@@ -1,0 +1,22 @@
+[project]
+name = "daily-tech-digest"
+version = "0.2.0"
+description = "An automated morning tech briefing: aggregate, curate, narrate, deliver."
+requires-python = ">=3.11"
+# The workspace root installs nothing but the members themselves. Every lib is
+# stdlib-only on purpose: the CLI has to run from a bare launchd job at 06:45.
+dependencies = ["digest-cli"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv.workspace]
+members = ["libs/*", "apps/*"]
+
+[tool.uv.sources]
+digest-cli = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["libs", "apps"]
+python_files = ["test_*.py"]
+addopts = "-q"
