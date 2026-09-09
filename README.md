@@ -1,8 +1,8 @@
 # Daily Tech Digest
 
 An automated morning tech briefing. Every day it gathers news from ~50 sources,
-scores and deduplicates it with an LLM, posts a curated digest to Slack as a
-threaded message, and optionally produces a two-host podcast episode of the same
+scores and deduplicates it with an LLM, DMs you a curated Block Kit digest from
+its own Slack app, and optionally produces a two-host podcast episode of the same
 material.
 
 ```
@@ -12,7 +12,7 @@ material.
 
 08:00  Claude routine ──> reads the summary
                      ├──> categorises, applies editorial rules
-                     ├──> posts a Slack thread
+                     ├──> DMs a Slack thread
                      └──> writes digests/YYYY-MM-DD/digest.json
 ```
 
@@ -44,7 +44,7 @@ git clone <this-repo> daily-tech-digest
 cd daily-tech-digest
 proto use                   # installs python, uv and moon at the pinned versions
 ./digest config
-$EDITOR config.env          # set SLACK_CHANNEL_ID
+$EDITOR config.env          # set SLACK_USER_ID
 ./digest install
 ```
 
@@ -62,7 +62,7 @@ Claude routine (see below), and verify:
 
 ```sh
 ./digest check          # dependencies, syntax, config
-./digest slack check    # token, scopes, channel membership
+./digest slack check    # token, scopes, DM destination
 ./digest status         # what exists for today
 moon check --all        # compile + test every project
 ```
@@ -93,7 +93,7 @@ moon run digest:check       # one project's syntax gate
 ## The Claude routine
 
 The editorial half runs as a scheduled Claude task. Its definition lives in
-`skill/SKILL.md` with placeholders for your paths and channel:
+`skill/SKILL.md` with placeholders for your paths and Slack destination:
 
 ```sh
 ./digest skill                    # print it with your config filled in
@@ -108,12 +108,13 @@ comfortably after the Horizon job — Horizon takes about 12 minutes, so a 06:45
 job and an 08:00 routine leaves plenty of room.
 
 The routine loads your preferences, reads the morning's summary, maps stories
-into categories, posts the Slack thread, uploads the podcast MP3 into it, tracks
-which stories you reacted to yesterday, and saves `digest.json`.
+into categories, DMs the Slack thread as Block Kit, uploads the podcast MP3 into
+it, tracks which stories you reacted to yesterday, and saves `digest.json`.
 
 It reaches Slack through `./digest slack` rather than an MCP server. That is
 what makes the audio work: MCP can post messages but cannot upload files, so the
-episode could previously only be named, not played.
+episode could previously only be named, not played. It is also what makes the
+digest a DM built from blocks rather than plain text in a channel.
 
 ## Configuration
 
@@ -122,7 +123,8 @@ to touch:
 
 | Key | Default | Notes |
 |---|---|---|
-| `SLACK_CHANNEL_ID` | — | **Required.** Where the digest is posted. |
+| `SLACK_USER_ID` | — | **Required.** Your member ID; the digest is DM'd to you. |
+| `SLACK_CHANNEL_ID` | — | Optional. Post to a channel instead of the DM. |
 | `DIGEST_HOME` | `~/Automation/daily-tech-digest` | All runtime state. |
 | `HORIZON_THRESHOLD` | `5.5` | Score cutoff 0-10. Lower = more stories. |
 | `HORIZON_HOUR/MINUTE` | `6` / `45` | Must finish before the routine runs. |

@@ -39,7 +39,7 @@ to emit a digest because AI analysis was failing — do NOT treat the absence of
 stories as a quiet news day; fall through to Approach C.
 
 **Approach C — WebSearch fallback:**
-If both A and B fail, fall back to the legacy WebSearch method: search for recent news in each category (JS/TS, AI/ML, Python, software engineering, web development, infrastructure, open source) and collect 30-45 stories manually. If even WebSearch fails, send a short Slack message to {{SLACK_CHANNEL_ID}}: "⚠️ Digest delayed — unable to source stories. Will retry in next run." and STOP.
+If both A and B fail, fall back to the legacy WebSearch method: search for recent news in each category (JS/TS, AI/ML, Python, software engineering, web development, infrastructure, open source) and collect 30-45 stories manually. If even WebSearch fails, DM a short Slack message with `{{REPO_ROOT}}/digest slack post --text "⚠️ Digest delayed — unable to source stories. Will retry in next run."` and STOP.
 
 On success (from any approach), read the summary from `{{DIGEST_HOME}}/horizon/data/summaries/` — the file is named `horizon-YYYY-MM-DD-en.md` (using today's date).
 
@@ -115,50 +115,91 @@ Parse the XML feed to find videos published in the last 48 hours (use a 48h wind
 If no new videos in the last 48 hours, skip this section entirely — do not include the header.
 If the RSS feed fetch fails, try a WebSearch fallback: `web_search: "site:youtube.com @aidotengineer" [current date]`
 
-### Step 4: Deliver via Slack thread
-The digest is delivered as a Slack thread in #claude-updates (channel ID: {{SLACK_CHANNEL_ID}}).
+### Step 4: Deliver via Slack DM
+The digest is delivered as a **direct message from the Digest app** to the user
+(member ID: {{SLACK_USER_ID}}) — not to a channel. It is still a thread: a header
+message with replies beneath it, so per-story reactions keep working.
 
-Delivery goes through the digest's own **Slack app**, not a Slack MCP server — the app can upload the podcast MP3 as a real attachment, which MCP cannot do. Drive it with the `{{REPO_ROOT}}/digest slack` CLI. Setup and troubleshooting: `{{REPO_ROOT}}/docs/slack-app.md`.
+Delivery goes through the digest's own **Slack app**, not a Slack MCP server — the
+app can upload the podcast MP3 as a real attachment, which MCP cannot do, and it
+can send Block Kit. Drive it with the `{{REPO_ROOT}}/digest slack` CLI, which
+resolves the DM itself; never pass `--channel`. Setup and troubleshooting:
+`{{REPO_ROOT}}/docs/slack-app.md`.
 
-Send every message with:
+**Every message is Block Kit**, sent as JSON on stdin:
 ```bash
-{{REPO_ROOT}}/digest slack post --text-file - <<'SLACKEOF'
-message text here
+{{REPO_ROOT}}/digest slack post --text "notification line" --blocks-file - <<'SLACKEOF'
+[ {"type": "section", "text": {"type": "mrkdwn", "text": "..."}} ]
 SLACKEOF
 ```
-Add `--thread-ts <ts>` for every message after the header. Each call prints one JSON object — read `ts` from it. Always use the `--text-file -` heredoc form rather than `--text "..."`: story text routinely contains backticks, quotes and `$`, and the heredoc keeps the shell from interpreting them.
+Add `--thread-ts <ts>` for every message after the header. Each call prints one
+JSON object — read `ts` from it.
 
-If the first call fails with `no Slack bot token`, `invalid_auth` or `not_in_channel`, the app is not installed yet. Do NOT fall back to an MCP server. Save the digest JSON (Step 6) and stop, noting that `docs/slack-app.md` needs to be run once.
+Rules that matter:
+- Always use the `--blocks-file -` heredoc form. Story text routinely contains
+  backticks, quotes and `$`; the quoted heredoc stops the shell interpreting them.
+- The JSON must be valid. Inside a JSON string, a line break is `\n` and a double
+  quote is `\"` — never a literal newline or bare quote. Prefer single quotes in
+  prose to avoid the escaping entirely.
+- Always pass `--text` too. Slack shows *that*, not the blocks, in the push
+  notification and the sidebar — the point of a DM. One line, no markup.
+- One story per message. Step 5 reads reactions per message, so batching stories
+  into one message would destroy the feedback signal.
+- Max 50 blocks per message; the templates below stay far under it.
+- No buttons or other interactive elements. The app has no interactivity endpoint,
+  so a button click would fail. Links go in `mrkdwn` as `<url|Label>`.
+
+If the first call fails with `no Slack bot token`, `invalid_auth` or
+`missing_scope`, the app is not installed or not reinstalled with the DM scopes.
+Do NOT fall back to an MCP server and do NOT fall back to a channel. Save the
+digest JSON (Step 6) and stop, noting that `docs/slack-app.md` needs to be run.
 
 **Message sequence:**
 
-**A. Header message (channel, no thread_ts — this creates the parent):**
+**A. Header message (no thread_ts — this creates the parent):**
+```json
+[
+  {"type": "header",
+   "text": {"type": "plain_text", "text": "🗞️  Chubby's Daily Tech Digest", "emoji": true}},
+  {"type": "context",
+   "elements": [{"type": "mrkdwn",
+                 "text": "*[Month Day, Year]*  ·  [N] stories  ·  [Y] influencer takes  ·  [Z] AI Engineer videos"}]},
+  {"type": "divider"}
+]
 ```
-*🗞️ Chubby's Daily Tech Digest — [Month Day, Year]*
-[N] stories | [Y] influencer takes | [Z] AI Engineer videos
-_Thread below_ 👇
-```
-The `ts` in the JSON printed by this call is the thread parent. Use it as `--thread-ts` for ALL subsequent messages, and save it for the digest.json `slack_thread_ts` field.
-If there are no AI Engineer videos, omit the video count from the header.
+`--text`: `🗞️ Daily Tech Digest — [Month Day, Year] · [N] stories`
+
+The `ts` in the JSON printed by this call is the thread parent. Use it as
+`--thread-ts` for ALL subsequent messages, and save it for the digest.json
+`slack_thread_ts` field.
+If there are no AI Engineer videos, omit the video count from the context line.
 
 **B. Category sections (all as thread replies using thread_ts from header):**
 
-For each category, send:
-1. A category header message: e.g. `⚡ *JS/TS ECOSYSTEM*`
-2. Each story as its own message:
+For each category, send a category header message:
+```json
+[{"type": "header", "text": {"type": "plain_text", "text": "⚡  JS/TS ECOSYSTEM", "emoji": true}}]
 ```
-*[number]. [Headline]*
 
-[1-2 sentence description. If from HN: (🔶 X points)]
-
-<[url]|[Source Name]>
+Then each story as its own message:
+```json
+[
+  {"type": "section",
+   "text": {"type": "mrkdwn",
+            "text": "*[number]. [Headline]*\n[1-2 sentence description.]"}},
+  {"type": "context",
+   "elements": [{"type": "mrkdwn",
+                 "text": "🔶 [points]  ·  <[url]|[Source Name]>  ·  <[discussion_url]|Discussion>"}]}
+]
 ```
+`--text`: `[number]. [Headline]`
 
 IMPORTANT formatting rules:
-- There MUST be a blank line between the bold headline and the description body
-- There MUST be a blank line between the description and the source link
-- Use Slack link syntax: <https://example.com|Source Name>
-- If a discussion link exists (HN, Reddit, etc.), add: <[url]|Source> · <[discussion_url]|Discussion>
+- The headline and the description go in ONE section block, separated by `\n`.
+- Links and metadata go in the trailing context block, never in the section.
+- Drop `🔶 [points]` unless the story came from HN, and drop the `· Discussion`
+  segment unless a discussion link exists.
+- Use Slack link syntax inside mrkdwn: `<https://example.com|Source Name>`.
 
 Category order and emoji labels:
 ⚡ JS/TS ECOSYSTEM
@@ -178,36 +219,42 @@ When a story represents a genuinely novel approach or paradigm shift, flag it wi
 
 **C. AI Engineer highlights section (thread replies, only if videos found in Step 3b):**
 
-Send category header: `🎬 *AI ENGINEER HIGHLIGHTS*`
-
-Then each video as its own message:
-```
-*[Video Title]*
-
-[2-3 sentence summary of key takeaways]
-
-<[youtube_url]|Watch on YouTube>
+Category header block with text `🎬  AI ENGINEER HIGHLIGHTS`, then each video as
+its own message:
+```json
+[
+  {"type": "section",
+   "text": {"type": "mrkdwn",
+            "text": "*[Video Title]*\n[2-3 sentence summary of key takeaways]"}},
+  {"type": "context",
+   "elements": [{"type": "mrkdwn", "text": "<[youtube_url]|▶︎ Watch on YouTube>"}]}
+]
 ```
 
 **D. Influencers section (thread replies):**
 
-Send category header: `🎙️ *INFLUENCER TAKES*`
-
-Then each take as its own message:
-```
-*[Person Name]* — [Role/Company]
-
-"[Quote or paraphrased take in 1-2 sentences]"
-
-<[source url]|Source>
+Category header block with text `🎙️  INFLUENCER TAKES`, then each take as its own
+message:
+```json
+[
+  {"type": "section",
+   "text": {"type": "mrkdwn",
+            "text": "*[Person Name]* — [Role/Company]\n> [Quote or paraphrased take in 1-2 sentences]"}},
+  {"type": "context",
+   "elements": [{"type": "mrkdwn", "text": "<[source url]|Source>"}]}
+]
 ```
 
 **E. Footer (thread reply):**
+```json
+[
+  {"type": "divider"},
+  {"type": "context",
+   "elements": [{"type": "mrkdwn",
+                 "text": "[N] stories from Horizon  ·  [Y] influencer takes  ·  [Z] AI Engineer videos  ·  react to a story, or reply _more on [number]_"}]}
+]
 ```
-_[N] stories from Horizon  |  [Y] influencer takes  |  [Z] AI Engineer videos_
-_Powered by Horizon  |  Reply "more on [number]" for details_
-```
-Omit the video count from footer if there were no videos.
+Omit the video count from the footer if there were no videos.
 
 ### Step 5: Track feedback from previous digest
 
@@ -225,6 +272,8 @@ Read the whole thread in one call — every reply comes back with its reactions 
 {{REPO_ROOT}}/digest slack thread --ts "<yesterday's slack_thread_ts>"
 ```
 Each message in the output has `ts`, `text`, `is_bot` and a `reactions` array (`name`, `count`, `users`). Reactions on the parent header message are included too.
+
+`text` here is the message's *notification fallback*, not its blocks — Slack does not return rendered block text. For a story that fallback is `[number]. [Headline]`, which is enough to match a comment to its story. This is the other reason Step 4 insists on a meaningful `--text` on every message.
 
 To re-check a single message: `{{REPO_ROOT}}/digest slack reactions --ts "<message ts>"`.
 
@@ -350,7 +399,7 @@ If generation or upload fails, log the error and continue. The podcast is a
 nice-to-have and must never block or invalidate the written digest.
 
 ### Error handling
-- If Horizon fails AND WebSearch fallback fails, send a short Slack message with `{{REPO_ROOT}}/digest slack post --text "⚠️ Digest delayed — unable to source stories. Will retry in next run."` and STOP.
+- If Horizon fails AND WebSearch fallback fails, DM a short Slack message with `{{REPO_ROOT}}/digest slack post --text "⚠️ Digest delayed — unable to source stories. Will retry in next run."` and STOP. A plain-text `--text` message is right here; blocks are for the digest itself.
 - If Slack delivery fails, save the digest to the JSON file anyway so it's not lost.
 - If the digest file already exists for today, this is a re-run. Overwrite the file but note "(re-run)" in the header message.
 - If Step 5 (feedback tracking) fails for any reason, log the error but continue to Step 6. Feedback tracking should never block the digest from being saved.

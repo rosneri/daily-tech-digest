@@ -3,11 +3,16 @@
 Replaces scripts/render-skill.sh.
 """
 
+import re
 from pathlib import Path
 
 from .config import die, ok, warn
 
 TEMPLATE = "skill/SKILL.md"
+
+# Only a real placeholder, not the `}}` that ends a nested JSON object — the
+# skill is full of Block Kit payloads.
+PLACEHOLDER = re.compile(r"\{\{[A-Z_]+\}\}")
 
 
 def render(cfg):
@@ -15,12 +20,13 @@ def render(cfg):
     if not source.exists():
         die(f"{source} not found")
 
-    if not cfg.slack_channel():
-        warn("SLACK_CHANNEL_ID is empty in config.env")
+    if not cfg.slack_user() and not cfg.slack_channel():
+        warn("neither SLACK_USER_ID nor SLACK_CHANNEL_ID is set in config.env")
 
     substitutions = {
         "{{DIGEST_HOME}}": str(cfg.digest_home),
         "{{REPO_ROOT}}": str(cfg.repo_root),
+        "{{SLACK_USER_ID}}": cfg.get("SLACK_USER_ID", "<SET SLACK_USER_ID>"),
         "{{SLACK_CHANNEL_ID}}": cfg.get("SLACK_CHANNEL_ID", "<SET SLACK_CHANNEL_ID>"),
         "{{AI_ENGINEER_FEED}}": cfg.get("AI_ENGINEER_FEED", ""),
     }
@@ -28,9 +34,9 @@ def render(cfg):
     for token, value in substitutions.items():
         text = text.replace(token, value)
 
-    leftover = [t for t in ("{{", "}}") if t in text]
+    leftover = sorted(set(PLACEHOLDER.findall(text)))
     if leftover:
-        warn("template still contains unsubstituted {{...}} placeholders")
+        warn(f"template still contains unsubstituted placeholders: {' '.join(leftover)}")
     return text
 
 

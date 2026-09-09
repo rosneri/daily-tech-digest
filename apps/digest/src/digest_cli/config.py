@@ -134,6 +134,31 @@ class Config:
         return (override or os.environ.get("SLACK_CHANNEL_ID")
                 or self.get("SLACK_CHANNEL_ID") or "").strip()
 
+    def slack_user(self, override=None):
+        return (override or os.environ.get("SLACK_USER_ID")
+                or self.get("SLACK_USER_ID") or "").strip()
+
+    def slack_target(self, channel=None, user=None):
+        """Where the digest goes, as (channel, user). A DM is the default.
+
+        Precedence matters for the migration: installs that predate DM delivery
+        still have SLACK_CHANNEL_ID in config.env, and it must not silently win
+        over a newly configured SLACK_USER_ID. So a configured user beats a
+        configured channel, and only an explicit `--channel` or $SLACK_CHANNEL_ID
+        overrides that — the escape hatch for a one-off post to a shared channel.
+        """
+        user = self.slack_user(user)
+        override = (channel or os.environ.get("SLACK_CHANNEL_ID") or "").strip()
+        if override:
+            return override, user
+        if user:
+            return "", user
+        configured = self.get("SLACK_CHANNEL_ID", "").strip()
+        if not configured:
+            die("no Slack destination — set SLACK_USER_ID in config.env to DM "
+                "the digest, or SLACK_CHANNEL_ID to post it to a channel")
+        return configured, ""
+
     def env_for_subprocess(self):
         """config.env values exported for a child process (Horizon, podcastfy)."""
         return {**os.environ, **{k: str(v) for k, v in self.values.items()}}

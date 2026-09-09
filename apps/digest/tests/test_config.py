@@ -73,3 +73,29 @@ def test_resolve_date():
     assert resolve_date("2026-08-30") == "2026-08-30"
     with pytest.raises(DigestError):
         resolve_date("30-08-2026")
+
+
+def test_slack_target_prefers_the_dm(monkeypatch):
+    monkeypatch.delenv("SLACK_CHANNEL_ID", raising=False)
+    monkeypatch.delenv("SLACK_USER_ID", raising=False)
+    # An install that predates DM delivery still has a channel configured; the
+    # newly added user ID must win over it rather than be silently ignored.
+    cfg = make(SLACK_USER_ID="U1", SLACK_CHANNEL_ID="C1")
+    assert cfg.slack_target() == ("", "U1")
+    assert make(SLACK_CHANNEL_ID="C1").slack_target() == ("C1", "")
+
+
+def test_an_explicit_channel_overrides_the_dm(monkeypatch):
+    monkeypatch.delenv("SLACK_CHANNEL_ID", raising=False)
+    monkeypatch.delenv("SLACK_USER_ID", raising=False)
+    cfg = make(SLACK_USER_ID="U1", SLACK_CHANNEL_ID="C1")
+    assert cfg.slack_target(channel="C9") == ("C9", "U1")
+    monkeypatch.setenv("SLACK_CHANNEL_ID", "C8")
+    assert cfg.slack_target() == ("C8", "U1")
+
+
+def test_slack_target_needs_a_destination(monkeypatch):
+    monkeypatch.delenv("SLACK_CHANNEL_ID", raising=False)
+    monkeypatch.delenv("SLACK_USER_ID", raising=False)
+    with pytest.raises(DigestError):
+        make().slack_target()

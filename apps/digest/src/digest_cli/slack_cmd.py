@@ -19,43 +19,73 @@ def _client(args):
     if not token:
         die("no Slack bot token — set SLACK_BOT_TOKEN in the environment or "
             "config.env, or point SLACK_TOKEN_FILE at a file, see docs/slack-app.md")
-    channel = cfg.slack_channel(getattr(args, "channel", None))
-    if not channel:
-        die("no Slack channel — set SLACK_CHANNEL_ID in config.env")
-    return SlackClient(token, channel), cfg
+    channel, user = cfg.slack_target(getattr(args, "channel", None),
+                                     getattr(args, "user", None))
+    return SlackClient(token, channel or None, user or None), cfg
 
 
 def _emit(payload):
     print(json.dumps(payload, indent=2 if len(payload) > 3 else None))
 
 
+def _slurp(source):
+    """Read a --*-file argument: `-` means stdin."""
+    if source == "-":
+        return sys.stdin.read()
+    return Path(source).expanduser().read_text()
+
+
 def _read_text(args):
     if args.text_file:
-        if args.text_file == "-":
-            return sys.stdin.read().rstrip("\n")
-        return Path(args.text_file).read_text().rstrip("\n")
-    if args.text is None:
-        die("provide --text or --text-file")
+        return _slurp(args.text_file).rstrip("\n")
     return args.text
+
+
+def _read_blocks(args):
+    """Parse --blocks/--blocks-file into a Block Kit array.
+
+    Accepts either a bare array of blocks or the `{"blocks": [...], "text": ...}`
+    envelope that Block Kit Builder exports, so payloads can be pasted straight
+    from the builder without being unwrapped first.
+    """
+    raw = _slurp(args.blocks_file) if args.blocks_file else args.blocks
+    if raw is None:
+        return None, None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        die(f"--blocks is not valid JSON: {exc}")
+    if isinstance(payload, dict):
+        blocks = payload.get("blocks")
+        if blocks is None:
+            die('block JSON object has no "blocks" key')
+        return blocks, payload.get("text")
+    return payload, None
 
 
 def cmd_check(args):
     client, _ = _client(args)
     auth = client.auth_test()
-    info = client.channel_info()
-    _emit({
-        "ok": True,
-        "team": auth.get("team"),
-        "bot_user": auth.get("user"),
-        "channel_id": client.channel,
-        "channel_name": info.get("name"),
-        "bot_is_member": info.get("is_member", False),
-    })
+    result = {"ok": True, "team": auth.get("team"), "bot_user": auth.get("user")}
+
+    if client.channel:
+        # A channel still has to be joined; a DM the bot opened never does.
+        info = client.channel_info()
+        result.update(target="channel", channel_id=client.channel,
+                      channel_name=info.get("name"),
+                      bot_is_member=info.get("is_member", False))
+    else:
+        result.update(target="dm", user_id=client.user, dm_channel=client.open_dm())
+    _emit(result)
 
 
 def cmd_post(args):
     client, _ = _client(args)
-    result = client.post(_read_text(args), thread_ts=args.thread_ts,
+    blocks, block_text = _read_blocks(args)
+    text = _read_text(args) or block_text
+    if blocks is None and text is None:
+        die("provide --text, --text-file, --blocks or --blocks-file")
+    result = client.post(text, blocks=blocks, thread_ts=args.thread_ts,
                          unfurl=not args.no_unfurl)
     _emit({"ok": True, **result})
 
@@ -85,15 +115,19 @@ def cmd_manifest(args):
 def add_parser(sub):
     slack = sub.add_parser("slack", help="post the digest via the Slack app")
     slack.add_argument("--token", help="bot token (default: env, config.env, token file)")
-    slack.add_argument("--channel", help="channel ID (default: SLACK_CHANNEL_ID)")
+    slack.add_argument("--user", help="DM this user ID (default: SLACK_USER_ID)")
+    slack.add_argument("--channel", help="post to this channel ID instead of the DM")
     ops = slack.add_subparsers(dest="slack_command", required=True)
 
     ops.add_parser("check", help="verify token, scopes and channel membership")
     ops.add_parser("manifest", help="print slack/manifest.yaml")
 
     p = ops.add_parser("post", help="send a message or thread reply")
-    p.add_argument("--text", help="message text (Slack mrkdwn)")
+    p.add_argument("--text", help="message text (Slack mrkdwn), or the "
+                                  "notification fallback when --blocks is used")
     p.add_argument("--text-file", help="read text from a file, or - for stdin")
+    p.add_argument("--blocks", help="Block Kit JSON array (or a {blocks:[...]} object)")
+    p.add_argument("--blocks-file", help="read block JSON from a file, or - for stdin")
     p.add_argument("--thread-ts", help="reply in this thread")
     p.add_argument("--no-unfurl", action="store_true", help="disable link previews")
 

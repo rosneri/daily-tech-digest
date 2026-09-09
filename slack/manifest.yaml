@@ -3,10 +3,10 @@ display_information:
   description: Posts the daily tech digest thread and uploads the podcast episode.
   background_color: "#1f2933"
   long_description: |
-    Delivers the daily tech digest to Slack as a threaded post: a header
-    message, one message per curated story grouped by category, an
-    influencer-takes section, and the day's auto-generated podcast episode
-    uploaded as an MP3 attachment.
+    Delivers the daily tech digest as a direct message from the app: a Block Kit
+    header, one message per curated story grouped by category, an influencer-
+    takes section, and the day's auto-generated podcast episode uploaded as an
+    MP3 attachment — all threaded under the header.
 
     It also reads back reactions and replies on the previous day's thread, so
     the digest can learn which stories were worth reading.
@@ -21,10 +21,14 @@ oauth_config:
     bot:
       # Post the digest header, category headers, story messages and footer.
       - chat:write
-      # Post into channels the bot has not been invited to (optional).
-      - chat:write.public
+      # Open the DM the digest is delivered to, and read its thread back.
+      - im:write
+      - im:history
       # Upload the daily podcast MP3 into the digest thread.
       - files:write
+      # The rest are only needed to post to a channel instead of the DM.
+      # Post into channels the bot has not been invited to (optional).
+      - chat:write.public
       # Read back the previous day's thread replies (public channels).
       - channels:history
       - channels:read

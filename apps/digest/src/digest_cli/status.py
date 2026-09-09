@@ -98,8 +98,12 @@ def check(cfg):
     print(f"  ok {CONFIG_FILE.name}" if CONFIG_FILE.exists()
           else "  -- config.env (run: ./digest config)")
     if cfg:
-        print(f"  ok SLACK_CHANNEL_ID" if cfg.get("SLACK_CHANNEL_ID")
-              else "  -- SLACK_CHANNEL_ID (unset)")
+        if cfg.get("SLACK_USER_ID"):
+            print("  ok SLACK_USER_ID (digest is DM'd)")
+        elif cfg.get("SLACK_CHANNEL_ID"):
+            print("  ok SLACK_CHANNEL_ID (digest goes to the channel)")
+        else:
+            print("  -- SLACK_USER_ID (unset — see docs/slack-app.md)")
         print(f"  ok SLACK_BOT_TOKEN" if cfg.has_slack_token()
               else "  -- SLACK_BOT_TOKEN (unset — see docs/slack-app.md)")
 

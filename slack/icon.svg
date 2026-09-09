@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="1" stop-color="#f5843c"/>
+    </linearGradient>
+    <clipPath id="above-horizon">
+      <rect x="0" y="0" width="512" height="236"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" fill="#1f2933"/>
+
+  <!-- rising sun: the Horizon half the digest is built on -->
+  <circle cx="256" cy="236" r="104" fill="url(#sun)" clip-path="url(#above-horizon)"/>
+
+  <rect x="96" y="230" width="320" height="12" rx="6" fill="#8b9aa7"/>
+
+  <!-- waveform: the podcast episode that rides under it -->
+  <g fill="#e4ecf2">
+    <rect x="119" y="300" width="22" height="40"  rx="11"/>
+    <rect x="161" y="284" width="22" height="72"  rx="11"/>
+    <rect x="203" y="268" width="22" height="104" rx="11"/>
+    <rect x="245" y="260" width="22" height="120" rx="11"/>
+    <rect x="287" y="268" width="22" height="104" rx="11"/>
+    <rect x="329" y="284" width="22" height="72"  rx="11"/>
+    <rect x="371" y="300" width="22" height="40"  rx="11"/>
+  </g>
+</svg>
