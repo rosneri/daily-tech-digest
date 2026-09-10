@@ -38,25 +38,35 @@ def bootstrap(cfg):
     log("Done. Test with: digest run")
 
 
-def run_daily(cfg, day=None, with_podcast=True):
-    """Run Horizon, then optionally the podcast. Returns an exit code."""
+def run_daily(cfg, day=None, with_podcast=True, with_delivery=True):
+    """The whole morning: Horizon, podcast, then compose and deliver.
+
+    One command end to end. The editorial half used to be a scheduled Claude
+    task reading the markdown summary; Horizon now tags every item with its
+    section, so composition is code and the run needs no second half.
+    """
     need("uv")
     day = resolve_date(day)
+    items_file = digest_horizon.items_path(cfg.digests_dir, day)
     try:
-        status, summary = digest_horizon.run(
-            horizon_dir=cfg.horizon_dir, day=day, log_path=cfg.horizon_log,
+        digest_horizon.ensure_profiles_dir(cfg.horizon_dir, cfg.profiles_dir, on_event=event)
+        status, report = digest_horizon.run_pipeline(
+            horizon_dir=cfg.horizon_dir, driver=cfg.pipeline_driver, out_path=items_file,
+            log_path=cfg.horizon_log, threshold=cfg.get("HORIZON_THRESHOLD") or None,
             env=cfg.env_for_subprocess(), on_event=event,
         )
     except digest_horizon.HorizonError as exc:
         die(str(exc))
 
     if status != 0:
-        warn(f"Horizon failed (exit {status}). Last 20 log lines:")
+        warn(f"Horizon failed (exit {status}): {report.get('error', 'no report')}")
         print("\n".join(digest_horizon.tail_log(cfg.horizon_log)), file=sys.stderr)
         return status
 
-    ok("Horizon finished")
-    ok(f"summary: {summary} ({summary.stat().st_size} bytes)")
+    fetched = report.get("fetched")
+    detail = f" from {fetched} fetched" if fetched else ""
+    ok(f"Horizon finished — {report['count']} analysed items{detail}")
+    ok(f"items: {items_file}")
 
     if with_podcast and cfg.flag("PODCAST_ENABLED", True):
         log("Generating podcast")
@@ -66,6 +76,10 @@ def run_daily(cfg, day=None, with_podcast=True):
             # A podcast failure must never fail the digest: the written half is
             # the deliverable and it is already on disk.
             warn(f"podcast generation failed ({exc}) — digest is unaffected")
+
+    if with_delivery:
+        from .deliver import deliver
+        return deliver(cfg, day)
     return 0
 
 

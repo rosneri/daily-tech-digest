@@ -6,19 +6,18 @@ its own Slack app, and optionally produces a two-host podcast episode of the sam
 material.
 
 ```
-06:45  launchd ──> Horizon ──> horizon-YYYY-MM-DD-en.md   (~170 items in, ~20-25 out)
-                      │
-                      └──────> digest-YYYY-MM-DD.mp3      (podcastfy, optional)
-
-08:00  Claude routine ──> reads the summary
-                     ├──> categorises, applies editorial rules
-                     ├──> DMs a Slack thread
-                     └──> writes digests/YYYY-MM-DD/digest.json
+06:45  launchd ──> digest run
+                   ├──> Horizon ──> horizon-items.json    (~170 items in, ~20-25 out)
+                   │                horizon-YYYY-MM-DD-en.md
+                   ├──> podcastfy ─> digest-YYYY-MM-DD.mp3            (optional)
+                   └──> deliver ──> ranks, sections, DMs a Block Kit thread
+                                    writes digests/YYYY-MM-DD/digest.json
 ```
 
-Two halves, deliberately decoupled: a **scheduled job** does the deterministic
-work (fetch, score, summarise, narrate), and a **Claude routine** does the
-editorial work (categorise, write, deliver). Either can be run on its own.
+One scheduled job, end to end, with no model in the loop after Horizon. Horizon
+does the judgement — score, one-line summary, and the section each story belongs
+in — and everything downstream is arithmetic and transport. Each step is still
+runnable on its own (`digest podcast`, `digest deliver`).
 
 ## What it needs
 
@@ -57,8 +56,7 @@ $EDITOR config.env          # set SLACK_USER_ID
 
 Skip pieces with `./digest install --no-podcast --no-schedule`.
 
-Then set up Slack delivery ([docs/slack-app.md](docs/slack-app.md)), register the
-Claude routine (see below), and verify:
+Then set up Slack delivery ([docs/slack-app.md](docs/slack-app.md)) and verify:
 
 ```sh
 ./digest check          # dependencies, syntax, config
@@ -90,31 +88,28 @@ moon run slack:test         # one project's tests
 moon run digest:check       # one project's syntax gate
 ```
 
-## The Claude routine
+## How the digest is composed
 
-The editorial half runs as a scheduled Claude task. Its definition lives in
-`skill/SKILL.md` with placeholders for your paths and Slack destination:
+There is no model in this half any more. Horizon's analysis profile — this
+repo's copy at `config/profiles/tech-news/analysis.md`, not the one bundled with
+Horizon — requires every item to carry exactly one `cat:<id>` tag naming its
+section, alongside the one-sentence summary and score Horizon already produced.
+Composition is then arithmetic:
+
+- stories are ranked by Horizon's score, nudged by `wantMore`, `wantLess`,
+  `focus` and the tags you have reacted to before (`favorites.json`)
+- AI/ML is held to `DIGEST_AI_SHARE` of the digest, and the whole thing to
+  `DIGEST_MAX_STORIES`
+- sections render in a fixed order, one Block Kit message per story
 
 ```sh
-./digest skill                    # print it with your config filled in
-./digest skill -o /tmp/SKILL.md   # or write it to a file
+./digest deliver --dry-run    # print the messages without sending
+./digest deliver              # compose and DM today's digest
 ```
 
-Re-render after changing `config.env` — the rendered copy is a build artefact,
-so edit `skill/SKILL.md` rather than the output.
-
-Create a scheduled task in Claude, attach the rendered file, and set it to run
-comfortably after the Horizon job — Horizon takes about 12 minutes, so a 06:45
-job and an 08:00 routine leaves plenty of room.
-
-The routine loads your preferences, reads the morning's summary, maps stories
-into categories, DMs the Slack thread as Block Kit, uploads the podcast MP3 into
-it, tracks which stories you reacted to yesterday, and saves `digest.json`.
-
-It reaches Slack through `./digest slack` rather than an MCP server. That is
-what makes the audio work: MCP can post messages but cannot upload files, so the
-episode could previously only be named, not played. It is also what makes the
-digest a DM built from blocks rather than plain text in a channel.
+`digest run` does this as its last step, so the launchd job is the whole
+pipeline: Horizon, podcast, delivery. See [docs/composing.md](docs/composing.md)
+for what the old Claude routine did that code does not.
 
 ## Configuration
 

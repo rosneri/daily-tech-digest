@@ -75,6 +75,8 @@ class Config:
         self.horizon_log = self.digest_home / "horizon.log"
         self.podcast_venv = self.digest_home / ".podcast-venv"
         self.generator = REPO_ROOT / "libs" / "podcast" / "scripts" / "generate_podcast.py"
+        self.pipeline_driver = REPO_ROOT / "libs" / "horizon" / "scripts" / "run_pipeline.py"
+        self.profiles_dir = REPO_ROOT / "config" / "profiles"
 
     def get(self, key, default=""):
         value = self.values.get(key, "")
@@ -89,6 +91,21 @@ class Config:
 
     def digest_json(self, day=None):
         return self.digests_dir / (day or today()) / "digest.json"
+
+    @property
+    def max_stories(self):
+        """Hard cap on the digest's length."""
+        return int(self.get("DIGEST_MAX_STORIES", "45"))
+
+    @property
+    def ai_share(self):
+        """Ceiling on AI/ML's share of the digest, as a fraction of its length.
+
+        Was an English rule in preferences.json ("at most 40% of stories should
+        be AI/ML topics") that only a model could apply. It is arithmetic, so it
+        is a setting now.
+        """
+        return float(self.get("DIGEST_AI_SHARE", "0.4"))
 
     @property
     def launchd_label(self):

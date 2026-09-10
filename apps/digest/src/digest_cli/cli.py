@@ -7,7 +7,7 @@ the behaviour lives in libs/ and the wiring in commands.py.
 import argparse
 import sys
 
-from . import commands, install, skill, slack_cmd, status
+from . import commands, deliver, install, slack_cmd, status
 from .config import DigestError, load_config
 
 
@@ -29,18 +29,21 @@ def build_parser():
     sub.add_parser("install-schedule", help="install/reload the daily launchd job")
     sub.add_parser("uninstall-schedule", help="remove the launchd job")
 
-    p = sub.add_parser("run", help="fetch, score and summarise today's news")
+    p = sub.add_parser("run", help="the whole morning: Horizon, podcast, deliver")
     p.add_argument("--no-podcast", action="store_true",
                    help="skip podcast generation after the summary")
+    p.add_argument("--no-deliver", action="store_true",
+                   help="stop after Horizon and the podcast; do not post")
+
+    p = sub.add_parser("deliver", help="compose and DM the digest for the date")
+    p.add_argument("--dry-run", action="store_true",
+                   help="print the Block Kit messages instead of sending them")
 
     sub.add_parser("bootstrap", help="clone/patch Horizon without a full install")
 
     p = sub.add_parser("podcast", help="generate the podcast episode")
     p.add_argument("--transcript-only", action="store_true",
                    help="write the script without synthesising audio")
-
-    p = sub.add_parser("skill", help="print the Claude routine definition")
-    p.add_argument("-o", "--out", help="write to a path instead of stdout")
 
     sub.add_parser("status", help="show what exists for the date")
     p = sub.add_parser("logs", help="tail the Horizon log")
@@ -82,7 +85,10 @@ def main(argv=None):
     cfg = load_config()
 
     if args.command == "run":
-        return commands.run_daily(cfg, args.date, with_podcast=not args.no_podcast)
+        return commands.run_daily(cfg, args.date, with_podcast=not args.no_podcast,
+                                  with_delivery=not args.no_deliver)
+    if args.command == "deliver":
+        return deliver.deliver(cfg, args.date, dry_run=args.dry_run)
     if args.command == "bootstrap":
         commands.bootstrap(cfg)
     elif args.command == "install-podcast":
@@ -93,8 +99,6 @@ def main(argv=None):
         commands.uninstall_schedule(cfg)
     elif args.command == "podcast":
         commands.generate_podcast(cfg, args.date, args.transcript_only)
-    elif args.command == "skill":
-        skill.write(cfg, args.out)
     elif args.command == "status":
         status.status(cfg, args.date)
     elif args.command == "logs":

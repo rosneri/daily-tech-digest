@@ -70,9 +70,7 @@ Installed.
   podcasts       {cfg.podcast_dir}
 
 Next:
-  1. Set SLACK_CHANNEL_ID in config.env if you have not already.
+  1. Set SLACK_USER_ID in config.env if you have not already.
   2. {'Slack app configured.' if slack_ready else 'Install the Slack app — see docs/slack-app.md, then: digest slack check'}
-  3. Register the Claude routine:  digest skill -o <path>
-     (see "The Claude routine" in README.md)
-  4. Try it:  digest run
+  3. Try it:  digest run
 """)

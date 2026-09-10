@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 members = [
     "daily-tech-digest",
     "digest-cli",
+    "digest-compose",
     "digest-horizon",
     "digest-launchd",
     "digest-podcast",
@@ -46,6 +47,7 @@ name = "digest-cli"
 version = "0.2.0"
 source = { editable = "apps/digest" }
 dependencies = [
+    { name = "digest-compose" },
     { name = "digest-horizon" },
     { name = "digest-launchd" },
     { name = "digest-podcast" },
@@ -55,12 +57,18 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "digest-compose", editable = "libs/compose" },
     { name = "digest-horizon", editable = "libs/horizon" },
     { name = "digest-launchd", editable = "libs/launchd" },
     { name = "digest-podcast", editable = "libs/podcast" },
     { name = "digest-shellenv", editable = "libs/shellenv" },
     { name = "digest-slack", editable = "libs/slack" },
 ]
+
+[[package]]
+name = "digest-compose"
+version = "0.1.0"
+source = { editable = "libs/compose" }
 
 [[package]]
 name = "digest-horizon"

@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "digest-shellenv",
     "digest-slack",
+    "digest-compose",
     "digest-launchd",
     "digest-horizon",
     "digest-podcast",
@@ -24,6 +25,7 @@ packages = ["src/digest_cli"]
 [tool.uv.sources]
 digest-shellenv = { workspace = true }
 digest-slack = { workspace = true }
+digest-compose = { workspace = true }
 digest-launchd = { workspace = true }
 digest-horizon = { workspace = true }
 digest-podcast = { workspace = true }

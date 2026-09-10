@@ -111,10 +111,10 @@ def check(cfg):
     for marker in ("pyproject.toml", ".prototools", ".moon/workspace.yml"):
         print(f"  ok {marker}" if (REPO_ROOT / marker).exists() else f"  -- {marker} (missing)")
 
-    print("== skill template")
-    template = REPO_ROOT / "skill" / "SKILL.md"
+    print("== analysis profile")
+    template = REPO_ROOT / "config" / "profiles" / "tech-news" / "analysis.md"
     print(f"  ok {template.relative_to(REPO_ROOT)}" if template.exists()
-          else "  -- skill/SKILL.md (missing)")
+          else "  -- config/profiles/tech-news/analysis.md (missing)")
 
     return 1 if failures else 0
 

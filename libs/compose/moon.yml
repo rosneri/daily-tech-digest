@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+layer: 'library'
+language: 'python'
+stack: 'backend'
+project:
+  name: 'compose'
+  description: 'Turn Horizon items into an ordered, categorised digest and its Block Kit payload.'
+
+tags:
+  - 'domain'
